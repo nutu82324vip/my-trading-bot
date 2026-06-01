@@ -1,4 +1,3 @@
-
 import asyncio
 import random
 import os
@@ -93,6 +92,7 @@ async def send_sig(call: types.CallbackQuery):
 async def web_server(request): return web.Response(text="Bot is running!")
 
 async def main():
+    print("--- ЗАПУСК БОТА ---")
     app = web.Application()
     app.router.add_get('/', web_server)
     runner = web.AppRunner(app)
