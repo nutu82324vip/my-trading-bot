@@ -3,5 +3,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-# Явно указываем python3
+# Эта команда покажет список файлов прямо в логах при деплое
+RUN ls -la 
 CMD ["python3", "bot.py"]
