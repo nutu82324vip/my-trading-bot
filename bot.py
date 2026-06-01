@@ -6,7 +6,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 
-API_TOKEN = '8601317051:AAFEL24P_6WFdJfvtL3Ts1VQeVXuxjmKFr8'
+API_TOKEN = '8601317051:AAEBAVaHTZ9VM25bOFsIPICi8IC3mfKiEzQ
 ADMIN_ID = 6765689893
 REF_LINK = "https://pocket-friends.co/r/vmbewy0x1o"
 PHOTO_URL = "https://i.ibb.co/hR4wYv9/IMG-20260601-135650.jpg"
