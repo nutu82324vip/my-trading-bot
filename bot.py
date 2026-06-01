@@ -6,8 +6,8 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 
-# Токен исправлен
-API_TOKEN = '8601317051:AAEnUfV1GBDSN0Zkr87QtpTDcLXs2M3YK_E'
+# Обновленный токен
+API_TOKEN = '8601317051:AAFEL24P_6WFdJfvtL3Ts1VQeVXuxjmKFr8'
 ADMIN_ID = 6765689893
 REF_LINK = "https://pocket-friends.co/r/vmbewy0x1o"
 PHOTO_URL = "https://i.ibb.co/hR4wYv9/IMG-20260601-135650.jpg"
@@ -37,8 +37,7 @@ def get_signal():
 @dp.message(Command("start"))
 async def start(message: types.Message):
     welcome_text = (
-        "⚡️ **AI SCANNER TRADE** — твой личный ИИ-ассистент для торговли на Pocket Option!\n\n"
-        "Робот сканирует рынок валютных пар 24/7, находит сильные ценовые пробои и развороты тренда по паттернам Price Action.\n\n"
+        "⚡️ **AI SCANNER TRADE** — твой личный ИИ-ассистент!\n\n"
         "Нажимай кнопку ниже, регистрируйся и забирай свой первый сигнал! 🚀"
     )
     kb = InlineKeyboardMarkup(inline_keyboard=[
