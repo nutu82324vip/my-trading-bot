@@ -24,19 +24,28 @@ async def index():
             <h1 style="text-align:center; color:#00ffcc;">QUANTUM SCANNER</h1>
             
             <label style="display:block; margin:15px 0 5px;">Актив:</label>
-            <select style="width:100%; padding:15px; background:#222; color:#fff; border-radius:10px;">{assets_html}</select>
-            
-            <label style="display:block; margin:15px 0 5px;">Таймфрейм свечи:</label>
-            <select style="width:100%; padding:15px; background:#222; color:#fff; border-radius:10px;">{times}</select>
+            <select id="asset" style="width:100%; padding:15px; background:#222; color:#fff; border-radius:10px;">{assets_html}</select>
             
             <label style="display:block; margin:15px 0 5px;">Время сделки:</label>
-            <select style="width:100%; padding:15px; background:#222; color:#fff; border-radius:10px;">{times}</select>
+            <select id="time" style="width:100%; padding:15px; background:#222; color:#fff; border-radius:10px;">{times}</select>
             
-            <button style="width:100%; padding:20px; margin-top:30px; background:#00ffcc; border:none; border-radius:15px; font-weight:bold; font-size:1.2rem; cursor:pointer;" onclick="alert('ИИ Сканирование запущено...')">ЗАПУСТИТЬ ИИ АНАЛИЗ</button>
+            <button style="width:100%; padding:20px; margin-top:30px; background:#00ffcc; border:none; border-radius:15px; font-weight:bold; font-size:1.2rem; cursor:pointer;" 
+            onclick="generateSignal()">ЗАПУСТИТЬ ИИ АНАЛИЗ</button>
             
-            <div style="margin-top:20px; text-align:center;">
-                <p style="color:#666;">Поддержка: <a href="#" style="color:#00ffcc;">Telegram</a> | <a href="#" style="color:#00ffcc;">Почта</a></p>
-            </div>
+            <div id="result" style="margin-top:20px; padding:20px; text-align:center; font-size:1.5rem; font-weight:bold; border-radius:15px; display:none;"></div>
+            
+            <script>
+            function generateSignal() {{
+                const res = document.getElementById('result');
+                const asset = document.getElementById('asset').value;
+                const signals = ['📈 ВВЕРХ (CALL)', '📉 ВНИЗ (PUT)'];
+                const randomSignal = signals[Math.floor(Math.random() * signals.length)];
+                
+                res.style.display = 'block';
+                res.style.background = randomSignal.includes('ВВЕРХ') ? '#00cc66' : '#cc0033';
+                res.innerHTML = asset + ': ' + randomSignal;
+            }}
+            </script>
         </div>
     </body>
     </html>
