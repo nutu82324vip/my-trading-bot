@@ -6,8 +6,10 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 
-API_TOKEN = '8601317051:AAFEL24P_6WFdJfvtL3Ts1VQeVXuxjmKFr8'
-ADMIN_ID = 6765689893
+# Обновленный токен
+API_TOKEN = '8896292895:AAGXHy5zc_NS-YdqY7wWZRuJ9J0Ae3aFu9k'
+# Обновленный ID администратора
+ADMIN_ID = 1883817844
 REF_LINK = "https://pocket-friends.co/r/vmbewy0x1o"
 PHOTO_URL = "https://i.ibb.co/hR4wYv9/IMG-20260601-135650.jpg"
 
@@ -97,7 +99,9 @@ async def main():
     app.router.add_get('/', web_server)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get("PORT", 10000)))
+    # Порт для Railway или Render
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     await dp.start_polling(bot)
 
