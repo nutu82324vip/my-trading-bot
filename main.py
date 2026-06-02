@@ -1,16 +1,10 @@
 import random
-from fastapi import FastAPI, Form, Request, Cookie
+from fastapi import FastAPI, Form, Cookie, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 import sqlite3
+import uuid
 
 app = FastAPI()
-
-def init_db():
-    conn = sqlite3.connect('users.db')
-    conn.execute('CREATE TABLE IF NOT EXISTS users (uid TEXT PRIMARY KEY, key TEXT, status TEXT)')
-    conn.commit()
-    conn.close()
-init_db()
 
 ASSETS = [
     "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "EUR/JPY", "GBP/JPY", "NZD/USD", "AUD/JPY", "CHF/JPY",
@@ -21,36 +15,34 @@ ASSETS = [
     "Apple OTC", "Tesla OTC", "NVIDIA OTC", "Amazon OTC", "Gold"
 ]
 
+def init_db():
+    conn = sqlite3.connect('users.db')
+    # status: 0=start, 1=id_sent, 2=paid, 3=active
+    conn.execute('CREATE TABLE IF NOT EXISTS users (uid TEXT PRIMARY KEY, key TEXT, status INTEGER)')
+    conn.commit()
+    conn.close()
+init_db()
+
 @app.get("/", response_class=HTMLResponse)
-async def home(user_key: str = Cookie(None)):
-    if user_key:
-        conn = sqlite3.connect('users.db')
-        user = conn.execute('SELECT * FROM users WHERE key=?', (user_key,)).fetchone()
-        if user and user[2] == 'active':
-            return "<h1>ДОБРО ПОЖАЛОВАТЬ В ТЕРМИНАЛ</h1>"
-    
+async def index():
     return """
     <body style="background:#0a0a0a; color:#fff; font-family:sans-serif; text-align:center; padding:50px;">
         <div style="background:#151515; padding:40px; border-radius:30px; max-width:400px; margin:auto;">
-            <h1>ВХОД В QUANTUM</h1>
-            <form action="/login" method="post">
-                <input name="uid" placeholder="Ваш ID" required style="width:100%; padding:15px; background:#222; border:none; border-radius:15px; color:white; margin-bottom:10px;">
-                <input name="key" placeholder="Ваш Ключ" required style="width:100%; padding:15px; background:#222; border:none; border-radius:15px; color:white; margin-bottom:10px;">
-                <button style="width:100%; padding:15px; background:#fff; color:#000; border-radius:15px; cursor:pointer;">ВОЙТИ</button>
+            <h1>QUANTUM ANALYTICS</h1>
+            <form action="/register" method="post">
+                <input name="uid" placeholder="Ваш ID" required style="width:100%; padding:15px; margin-bottom:10px; background:#222; border:none; border-radius:15px; color:white;">
+                <button style="width:100%; padding:15px; background:#fff; color:#000; border-radius:15px; cursor:pointer;">РЕГИСТРАЦИЯ</button>
             </form>
         </div>
     </body>
     """
 
-@app.post("/login")
-async def login(uid: str = Form(...), key: str = Form(...)):
+@app.post("/register")
+async def register(uid: str = Form(...)):
     conn = sqlite3.connect('users.db')
-    user = conn.execute('SELECT status FROM users WHERE uid=? AND key=?', (uid, key)).fetchone()
-    if user and user[0] == 'active':
-        response = RedirectResponse(url="/scanner")
-        response.set_cookie(key="user_key", value=key)
-        return response
-    return "<h1>Ошибка: Неверные данные или доступ закрыт.</h1>"
+    conn.execute('INSERT OR IGNORE INTO users VALUES (?, ?, ?)', (uid, "", 1))
+    conn.commit()
+    return "<h1>Заявка отправлена. Ожидайте подтверждения ID.</h1>"
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin():
@@ -58,13 +50,26 @@ async def admin():
     users = conn.execute('SELECT * FROM users').fetchall()
     html = "<h1>Админка</h1>"
     for u in users:
-        html += f"<p>{u[0]} | Статус: {u[2]} <a href='/approve/{u[0]}'>[АКТИВИРОВАТЬ]</a></p>"
+        status_text = ["Новый", "ID проверен", "Оплата подтверждена", "Активен"][u[2]]
+        html += f"<p>{u[0]} | Статус: {status_text} | "
+        if u[2] == 1: html += f"<a href='/set_status/{u[0]}/2'>[ПОДТВЕРДИТЬ ОПЛАТУ]</a>"
+        elif u[2] == 2: html += f"<a href='/set_status/{u[0]}/3'>[АКТИВИРОВАТЬ]</a>"
+        html += "</p>"
     return html
 
-@app.get("/approve/{uid}")
-async def approve(uid: str):
+@app.get("/set_status/{uid}/{status}")
+async def set_status(uid: str, status: int):
     conn = sqlite3.connect('users.db')
-    conn.execute('UPDATE users SET status=? WHERE uid=?', ('active', uid))
+    key = str(uuid.uuid4())[:8] if status == 3 else ""
+    conn.execute('UPDATE users SET status=?, key=? WHERE uid=?', (status, key, uid))
     conn.commit()
-    return "<h1>Активировано!</h1>"
+    return f"<h1>Статус обновлен. Ключ для входа: {key}</h1>"
 
+@app.post("/login")
+async def login(uid: str = Form(...), key: str = Form(...)):
+    conn = sqlite3.connect('users.db')
+    user = conn.execute('SELECT * FROM users WHERE uid=? AND key=?', (uid, key)).fetchone()
+    if user and user[2] == 3:
+        # Здесь будет логика сканера с 45 активами
+        return "<h1>ДОСТУП ОТКРЫТ!</h1> <p>Тут будут сигналы...</p>"
+    return "<h1>Доступ запрещен.</h1>"
