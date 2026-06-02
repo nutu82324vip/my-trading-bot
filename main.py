@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Form
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Request, Cookie
+from fastapi.responses import HTMLResponse, RedirectResponse
 import sqlite3, uuid
 
 app = FastAPI()
@@ -20,55 +20,47 @@ def init_db():
     conn.close()
 init_db()
 
+# --- ЛЕНДИНГ ---
 @app.get("/", response_class=HTMLResponse)
-async def index():
-    return """
-    <html><body style="background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:50px;">
-        <div style="background:#111; padding:40px; border-radius:30px; max-width:600px; margin:auto;">
-            <h1 style="font-size:3rem; color:#00ffcc;">QUANTUM ANALYTICS</h1>
-            <p style="font-size:1.5rem;">Профессиональный бот для анализа 45 активов.</p>
-            <a href="https://pocket-friends.co/r/vmbewy0x1o" style="font-size:1.5rem; color:#00ffcc;">💎 РЕГИСТРАЦИЯ</a>
-            <form action="/register" method="post" style="margin-top:40px;">
-                <input name="uid" placeholder="Ваш ID" required style="width:100%; font-size:1.5rem; padding:20px; border-radius:15px; border:none; margin-bottom:20px;">
-                <button style="width:100%; font-size:1.5rem; padding:20px; border-radius:15px; border:none; background:#fff;">ОТПРАВИТЬ ID</button>
-            </form>
-        </div>
-    </body></html>
-    """
+async def index(uid: str = Cookie(None)):
+    if uid:
+        conn = sqlite3.connect('users.db')
+        user = conn.execute('SELECT status, key FROM users WHERE uid=?', (uid,)).fetchone()
+        if user:
+            if user[0] == 3: # Доступ открыт
+                options = "".join([f"<option value='{a}'>{a}</option>" for a in ASSETS])
+                return f"<body style='background:#000; color:#fff; padding:50px; text-align:center;'><h1>СИСТЕМА АКТИВНА</h1><select style='font-size:1.5rem;'>{options}</select><br><br><button style='padding:20px; font-size:1.5rem;' onclick='location.reload()'>ЗАПУСТИТЬ АНАЛИЗ</button></body>"
+            return f"<body style='background:#000; color:#fff; padding:50px; text-align:center; font-size:1.5rem;'><h1>МЕНЮ ОЖИДАНИЯ</h1><p>Советов: Не более 3% на сделку, анализируйте новости.</p></body>"
+    
+    return """<body style="background:#000; color:#fff; text-align:center; padding:50px; font-size:1.5rem;">
+        <div style="background:#111; padding:40px; border-radius:30px;"><h1>QUANTUM</h1><form action="/login" method="post"><input name="uid" style="padding:20px; font-size:1.5rem; width:80%;" placeholder="Введите ваш ID"><button style="padding:20px; font-size:1.5rem;">ВОЙТИ</button></form></div>
+    </body>"""
 
-@app.post("/register", response_class=HTMLResponse)
-async def register(uid: str = Form(...)):
+@app.post("/login")
+async def login(uid: str = Form(...)):
     conn = sqlite3.connect('users.db')
     conn.execute('INSERT OR IGNORE INTO users VALUES (?, ?, ?)', (uid, "", 1))
     conn.commit()
-    return """<body style="background:#000; color:#fff; text-align:center; padding:50px; font-size:2rem;">
-        <h1>ЗАЯВКА ПРИНЯТА</h1>
-        <p>Меню ожидания: Изучайте советы, пока мы проверяем ваш статус.</p>
-        <ul style="text-align:left; font-size:1.5rem;">
-            <li>Риск-менеджмент: 3% на сделку.</li>
-            <li>Анализ: 45+ активов в реальном времени.</li>
-            <li>Ожидайте активации ключа администратором.</li>
-        </ul>
-    </body>"""
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(key="uid", value=uid)
+    return response
 
+# --- АДМИНКА ---
 @app.get("/admin", response_class=HTMLResponse)
 async def admin():
     conn = sqlite3.connect('users.db')
     users = conn.execute('SELECT * FROM users').fetchall()
     html = "<body style='background:#111; color:#fff; padding:50px; font-size:1.5rem;'>"
-    html += "<h1>УПРАВЛЕНИЕ</h1>"
     for u in users:
-        html += f"<div style='border:1px solid #333; padding:20px; margin-bottom:20px;'>ID: {u[0]} | Статус: {u[2]}<br>"
-        html += f"<a href='/set/{u[0]}/2' style='color:#0f0;'>[ПРИНЯТЬ ID]</a> "
-        html += f"<a href='/set/{u[0]}/3' style='color:#0ff;'>[АКТИВИРОВАТЬ]</a> "
-        html += f"<a href='/set/{u[0]}/cancel' style='color:#f00;'>[ОТМЕНИТЬ]</a></div>"
+        html += f"<div style='border:2px solid #333; padding:20px; margin-bottom:20px;'>ID: {u[0]} | Статус: {u[2]}<br>"
+        html += f"<a href='/set/{u[0]}/2' style='color:#0f0;'>[ПРИНЯТЬ ID]</a> <a href='/set/{u[0]}/3' style='color:#0ff;'>[АКТИВИРОВАТЬ]</a> <a href='/set/{u[0]}/cancel' style='color:#f00;'>[ОТМЕНИТЬ]</a></div>"
     return html + "</body>"
 
-@app.get("/set/{uid}/{action}", response_class=HTMLResponse)
+@app.get("/set/{uid}/{action}")
 async def set_status(uid: str, action: str):
     conn = sqlite3.connect('users.db')
     if action == "2": conn.execute('UPDATE users SET status=2 WHERE uid=?', (uid,))
     elif action == "3": conn.execute('UPDATE users SET status=3, key=? WHERE uid=?', (str(uuid.uuid4())[:8], uid))
     elif action == "cancel": conn.execute('DELETE FROM users WHERE uid=?', (uid,))
     conn.commit()
-    return "<h1>ДЕЙСТВИЕ ВЫПОЛНЕНО</h1><a href='/admin'>НАЗАД</a>"
+    return "<h1>ОК</h1><a href='/admin'>Назад</a>"
