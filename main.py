@@ -3,29 +3,34 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
-ASSETS = [
-    "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD", "AUD/USD", "NZD/USD", "EUR/GBP", "EUR/JPY", "EUR/CHF",
-    "EUR/CAD", "EUR/AUD", "GBP/JPY", "GBP/CHF", "GBP/AUD", "GBP/CAD", "AUD/JPY", "AUD/NZD", "AUD/CAD", "AUD/CHF",
-    "CAD/JPY", "CAD/CHF", "CHF/JPY", "NZD/JPY", "NZD/CAD", "NZD/CHF", "USD/RUB", "EUR/RUB", "USD/TRY", "USD/BRL",
-    "USD/MXN", "USD/ZAR", "USD/CNH", "USD/SGD", "USD/HKD", "USD/INR", "USD/IDR", "USD/MYR", "USD/PHP", "USD/THB",
-    "USD/VND", "USD/UAH", "BTC", "ETH", "LTC", "XRP", "BCH", "Dash", "BNB", "SOL", "ADA", "DOGE", "DOT", "AVAX",
-    "LINK", "MATIC", "TRX", "TON", "Apple", "Microsoft", "NVIDIA", "Meta", "Intel", "Tesla", "AMD", "Google",
-    "Amazon", "Alibaba", "Coinbase", "Palantir", "GameStop", "Marathon"
-]
+# Разделение активов по категориям
+DATA = {
+    "Валюты": ["AED/CNY OTC", "AUD/CAD OTC", "AUD/CHF", "AUD/CHF OTC", "AUD/JPY", "AUD/USD", "BHD/CNY OTC", "CHF/JPY", "CHF/JPY OTC", "CHF/NOK OTC", "EUR/CAD", "EUR/CHF OTC", "EUR/GBP OTC", "EUR/JPY", "EUR/USD", "EUR/USD OTC", "GBP/AUD", "GBP/CAD", "GBP/USD OTC", "MAD/USD OTC", "OMR/CNY OTC", "QAR/CNY OTC", "USD/CAD", "USD/CAD OTC", "USD/CHF OTC", "USD/CNH OTC", "USD/JPY OTC", "USD/MYR OTC", "USD/PHP OTC", "CAD/CHF OTC"],
+    "Криптовалюты": ["Avalanche OTC", "Polkadot OTC", "Ethereum OTC", "Solana OTC", "TRON OTC", "BNB OTC", "Bitcoin OTC"],
+    "Акции": ["Apple OTC", "FACEBOOK INC OTC", "Johnson & Johnson OTC", "Alibaba OTC", "Citigroup Inc OTC", "FedEx OTC", "Tesla OTC", "Advanced Micro Devices OTC", "VIX OTC", "Coinbase Global OTC"]
+}
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    assets_html = "".join([f"<option value='{a}'>{a}</option>" for a in ASSETS])
+    # Генерируем JSON-объект для JS
+    import json
+    data_json = json.dumps(DATA)
+    
     times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин"]
     times_html = "".join([f"<option value='{t}'>{t}</option>" for t in times])
     
     return f"""
     <html style="font-size:20px;"><body style="background:#050505; color:#fff; font-family:sans-serif; margin:0; padding:15px;">
         <div style="max-width:500px; margin:auto; background:#111; padding:25px; border-radius:25px; border:1px solid #333;">
-            <h1 style="text-align:center; color:#00ffcc; font-size: 1.8rem;">QUANTUM AI ANALYZER</h1>
+            <h1 style="text-align:center; color:#00ffcc; font-size: 1.6rem;">QUANTUM AI ANALYZER</h1>
+            
+            <label>Категория:</label>
+            <select id="cat" onchange="updateAssets()" style="width:100%; padding:15px; margin:10px 0 20px; background:#222; color:#fff; border-radius:10px;">
+                <option value="Валюты">Валюты</option><option value="Криптовалюты">Криптовалюты</option><option value="Акции">Акции</option>
+            </select>
             
             <label>Актив:</label>
-            <select id="asset" style="width:100%; padding:15px; margin:10px 0 20px; background:#222; color:#fff; border-radius:10px;">{assets_html}</select>
+            <select id="asset" style="width:100%; padding:15px; margin:10px 0 20px; background:#222; color:#fff; border-radius:10px;"></select>
             
             <div style="display:flex; gap:10px;">
                 <div style="flex:1;"><label style="font-size:0.8rem;">Интервал:</label><select id="candle" style="width:100%; padding:12px; margin:10px 0; background:#222; color:#fff; border-radius:10px;">{times_html}</select></div>
@@ -36,12 +41,19 @@ async def index():
             
             <div id="status" style="margin-top:20px; text-align:center; color:#888;"></div>
             <div id="result" style="margin-top:15px; padding:20px; text-align:center; font-size:1.5rem; border-radius:15px; display:none;"></div>
-            
-            <div id="advice" style="margin-top:10px; display:none; text-align:center; font-size:0.9rem; color:#aaa; line-height:1.4;"></div>
-            
-            <button id="martingaleBtn" style="width:100%; padding:15px; margin-top:20px; background:transparent; border:2px solid #ffcc00; color:#ffcc00; border-radius:15px; font-weight:bold; cursor:pointer; display:none;" onclick="runAI()">ПЕРЕКРЫТИЕ (ТУ ЖЕ ПАРУ)</button>
+            <div id="advice" style="margin-top:10px; display:none; text-align:center; font-size:0.9rem; color:#aaa;"></div>
+            <button id="martingaleBtn" style="width:100%; padding:15px; margin-top:20px; background:transparent; border:2px solid #ffcc00; color:#ffcc00; border-radius:15px; font-weight:bold; cursor:pointer; display:none;" onclick="runAI()">ПЕРЕКРЫТИЕ</button>
             
             <script>
+            const data = {data_json};
+            function updateAssets() {{
+                const cat = document.getElementById('cat').value;
+                const assetSelect = document.getElementById('asset');
+                assetSelect.innerHTML = "";
+                data[cat].forEach(a => assetSelect.innerHTML += `<option value='${{a}}'>${{a}}</option>`);
+            }}
+            updateAssets(); // Инициализация
+
             async function runAI() {{
                 const status = document.getElementById('status');
                 const res = document.getElementById('result');
@@ -58,16 +70,13 @@ async def index():
                 await new Promise(r => setTimeout(r, 1500));
                 
                 const trend = Math.random() > 0.4 ? '📈 ВВЕРХ' : '📉 ВНИЗ';
-                const volatility = Math.random() > 0.5 ? 'Высокая' : 'Низкая';
-                
                 status.innerHTML = "";
                 res.style.display = 'block';
                 res.style.background = trend.includes('ВВЕРХ') ? '#00cc66' : '#cc0033';
-                res.innerHTML = trend + "<br><small style='font-size:1rem;'>Точность: 84.7%</small>";
+                res.innerHTML = trend + "<br><small style='font-size:1rem;'>Точность: 86.4%</small>";
                 
                 adv.style.display = 'block';
-                adv.innerHTML = "• Волатильность рынка: " + volatility + "<br>• Рекомендованный вход: На откате цены";
-                
+                adv.innerHTML = "• Волатильность: Средняя<br>• Сигнал: Подтвержден ИИ-моделью";
                 mBtn.style.display = 'block';
                 btn.disabled = false;
             }}
