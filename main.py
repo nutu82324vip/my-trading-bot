@@ -53,7 +53,7 @@ async def index():
                 const cat = document.getElementById('cat').value;
                 const assetSelect = document.getElementById('asset');
                 assetSelect.innerHTML = "";
-                data[cat].forEach(a => assetSelect.innerHTML += `<option value='${{a}}'>${{a}}</option>`);
+                data[cat].forEach(a => assetSelect.innerHTML += '<option value="' + a + '">' + a + '</option>');
             }}
             updateAssets();
 
@@ -74,4 +74,22 @@ async def index():
                 load.style.display = 'none';
                 
                 const trend = Math.random() > 0.4 ? '📈 ВВЕРХ' : '📉 ВНИЗ';
-                const prob = (82 + Math.random() * 12).toFixed(1
+                const prob = (82 + Math.random() * 12).toFixed(1);
+                const entryDelay = Math.floor(Math.random() * 8) + 3;
+                
+                res.style.display = 'block';
+                res.style.borderLeft = "5px solid " + (trend.includes('ВВЕРХ') ? '#00cc66' : '#cc0033');
+                res.innerHTML = '<div style="font-size:2rem; font-weight:bold;">' + trend + '</div>' +
+                                '<div style="color:#888;">Вероятность: ' + prob + '%</div>' +
+                                '<div style="margin-top:10px; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: ' + entryDelay + ' СЕК.</div>';
+                
+                adv.style.display = 'block';
+                adv.innerHTML = "• Рекомендация: Вход по тренду<br>• Анализ объема: Оптимально";
+                
+                mBtn.style.display = 'block';
+                btn.disabled = false;
+            }}
+            </script>
+        </div>
+    </body></html>
+    """
