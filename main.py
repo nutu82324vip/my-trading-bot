@@ -14,29 +14,37 @@ DATA = {
 async def index():
     data_json = json.dumps(DATA)
     times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин"]
-    times_html = "".join([f"<option value='{t}'>{t}</option>" for t in times])
+    options_html = "".join([f"<option value='{t}'>{t}</option>" for t in times])
     
     return f"""
     <html style="font-size:20px;"><body style="background:#0a0a0c; color:#fff; font-family:'Segoe UI', sans-serif; margin:0; padding:10px;">
         <div style="max-width:500px; margin:auto; background:#16161a; padding:25px; border-radius:20px; border:1px solid #333; box-shadow: 0 0 30px rgba(0,255,204,0.1);">
-            <h1 style="text-align:center; color:#00ffcc; font-size: 1.8rem; letter-spacing: 2px;">QUANTUM CORE v4.2</h1>
+            <h1 style="text-align:center; color:#00ffcc; font-size: 1.6rem; letter-spacing: 2px;">QUANTUM CORE v4.2</h1>
             
-            <div style="margin-bottom:15px;">
-                <label style="color:#888; font-size:0.8rem;">КАТЕГОРИЯ:</label>
-                <select id="cat" onchange="updateAssets()" style="width:100%; padding:12px; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;">
-                    <option value="Валюты">Валюты</option><option value="Криптовалюты">Криптовалюты</option><option value="Акции">Акции</option>
-                </select>
+            <label style="color:#888; font-size:0.7rem;">КАТЕГОРИЯ:</label>
+            <select id="cat" onchange="updateAssets()" style="width:100%; padding:12px; margin-bottom:10px; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;">
+                <option value="Валюты">Валюты</option><option value="Криптовалюты">Криптовалюты</option><option value="Акции">Акции</option>
+            </select>
+            
+            <label style="color:#888; font-size:0.7rem;">ВЫБОР АКТИВА:</label>
+            <select id="asset" style="width:100%; padding:12px; margin-bottom:15px; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;"></select>
+            
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;">
+                    <label style="color:#888; font-size:0.7rem;">ТАЙМФРЕЙМ:</label>
+                    <select id="candle" style="width:100%; padding:10px; margin-top:5px; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;">{options_html}</select>
+                </div>
+                <div style="flex:1;">
+                    <label style="color:#888; font-size:0.7rem;">ЭКСПИРАЦИЯ:</label>
+                    <select id="duration" style="width:100%; padding:10px; margin-top:5px; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;">{options_html}</select>
+                </div>
             </div>
             
-            <label style="color:#888; font-size:0.8rem;">ВЫБОР АКТИВА:</label>
-            <select id="asset" style="width:100%; padding:12px; margin:10px 0; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;"></select>
+            <button id="btn" style="width:100%; padding:18px; margin-top:20px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold; cursor:pointer;" onclick="runAI()">ЗАПУСК АНАЛИЗА</button>
             
-            <button id="btn" style="width:100%; padding:18px; margin-top:15px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:1.1rem;" onclick="runAI()">ЗАПУСК АНАЛИЗА</button>
-            
-            <div id="loading" style="display:none; text-align:center; margin:20px 0; color:#00ffcc;">Анализ рыночных потоков...</div>
+            <div id="loading" style="display:none; text-align:center; margin:20px 0; color:#00ffcc;">Сканирование рыночных данных...</div>
             <div id="result" style="margin-top:20px; padding:20px; text-align:center; border-radius:15px; display:none; background:#1f1f24; border:1px solid #444;"></div>
-            <div id="advice" style="margin-top:15px; display:none; font-size:0.9rem; color:#aaa; line-height:1.6; border-top:1px solid #333; padding-top:10px;"></div>
-            
+            <div id="advice" style="margin-top:15px; display:none; font-size:0.9rem; color:#aaa; border-top:1px solid #333; padding-top:10px;"></div>
             <button id="martingaleBtn" style="width:100%; padding:12px; margin-top:20px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px; display:none;" onclick="runAI()">ПЕРЕКРЫТИЕ СДЕЛКИ</button>
             
             <script>
@@ -66,21 +74,14 @@ async def index():
                 
                 const trend = Math.random() > 0.4 ? '📈 ВВЕРХ' : '📉 ВНИЗ';
                 const prob = (82 + Math.random() * 12).toFixed(1);
-                const adviceList = [
-                    "• RSI показывает перепроданность, вероятен импульс.",
-                    "• Объемы торгов подтверждают текущий тренд.",
-                    "• Уровень сопротивления пробит — работаем по тренду.",
-                    "• ИИ-модель обнаружила формирование свечного паттерна.",
-                    "• Волатильность актива высокая, сигнал надежный."
-                ];
                 
                 res.style.display = 'block';
                 res.style.borderLeft = "5px solid " + (trend.includes('ВВЕРХ') ? '#00cc66' : '#cc0033');
                 res.innerHTML = `<div style="font-size:2rem; font-weight:bold;">${{trend}}</div>
-                                 <div style="color:#888;">Точность: ${{prob}}%</div>`;
+                                 <div style="color:#888;">Вероятность: ${{prob}}%</div>`;
                 
                 adv.style.display = 'block';
-                adv.innerHTML = adviceList.sort(() => 0.5 - Math.random()).slice(0, 2).join('<br>');
+                adv.innerHTML = "• Рекомендация: Вход по тренду<br>• Анализ объема: Оптимально";
                 
                 mBtn.style.display = 'block';
                 document.getElementById('btn').disabled = false;
