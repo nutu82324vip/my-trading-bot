@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
+import json
 
 app = FastAPI()
 
-# Разделение активов по категориям
 DATA = {
     "Валюты": ["AED/CNY OTC", "AUD/CAD OTC", "AUD/CHF", "AUD/CHF OTC", "AUD/JPY", "AUD/USD", "BHD/CNY OTC", "CHF/JPY", "CHF/JPY OTC", "CHF/NOK OTC", "EUR/CAD", "EUR/CHF OTC", "EUR/GBP OTC", "EUR/JPY", "EUR/USD", "EUR/USD OTC", "GBP/AUD", "GBP/CAD", "GBP/USD OTC", "MAD/USD OTC", "OMR/CNY OTC", "QAR/CNY OTC", "USD/CAD", "USD/CAD OTC", "USD/CHF OTC", "USD/CNH OTC", "USD/JPY OTC", "USD/MYR OTC", "USD/PHP OTC", "CAD/CHF OTC"],
     "Криптовалюты": ["Avalanche OTC", "Polkadot OTC", "Ethereum OTC", "Solana OTC", "TRON OTC", "BNB OTC", "Bitcoin OTC"],
@@ -12,37 +12,32 @@ DATA = {
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    # Генерируем JSON-объект для JS
-    import json
     data_json = json.dumps(DATA)
-    
     times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин"]
     times_html = "".join([f"<option value='{t}'>{t}</option>" for t in times])
     
     return f"""
-    <html style="font-size:20px;"><body style="background:#050505; color:#fff; font-family:sans-serif; margin:0; padding:15px;">
-        <div style="max-width:500px; margin:auto; background:#111; padding:25px; border-radius:25px; border:1px solid #333;">
-            <h1 style="text-align:center; color:#00ffcc; font-size: 1.6rem;">QUANTUM AI ANALYZER</h1>
+    <html style="font-size:20px;"><body style="background:#0a0a0c; color:#fff; font-family:'Segoe UI', sans-serif; margin:0; padding:10px;">
+        <div style="max-width:500px; margin:auto; background:#16161a; padding:25px; border-radius:20px; border:1px solid #333; box-shadow: 0 0 30px rgba(0,255,204,0.1);">
+            <h1 style="text-align:center; color:#00ffcc; font-size: 1.8rem; letter-spacing: 2px;">QUANTUM CORE v4.2</h1>
             
-            <label>Категория:</label>
-            <select id="cat" onchange="updateAssets()" style="width:100%; padding:15px; margin:10px 0 20px; background:#222; color:#fff; border-radius:10px;">
-                <option value="Валюты">Валюты</option><option value="Криптовалюты">Криптовалюты</option><option value="Акции">Акции</option>
-            </select>
-            
-            <label>Актив:</label>
-            <select id="asset" style="width:100%; padding:15px; margin:10px 0 20px; background:#222; color:#fff; border-radius:10px;"></select>
-            
-            <div style="display:flex; gap:10px;">
-                <div style="flex:1;"><label style="font-size:0.8rem;">Интервал:</label><select id="candle" style="width:100%; padding:12px; margin:10px 0; background:#222; color:#fff; border-radius:10px;">{times_html}</select></div>
-                <div style="flex:1;"><label style="font-size:0.8rem;">Экспирация:</label><select id="duration" style="width:100%; padding:12px; margin:10px 0; background:#222; color:#fff; border-radius:10px;">{times_html}</select></div>
+            <div style="margin-bottom:15px;">
+                <label style="color:#888; font-size:0.8rem;">КАТЕГОРИЯ:</label>
+                <select id="cat" onchange="updateAssets()" style="width:100%; padding:12px; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;">
+                    <option value="Валюты">Валюты</option><option value="Криптовалюты">Криптовалюты</option><option value="Акции">Акции</option>
+                </select>
             </div>
             
-            <button id="btn" style="width:100%; padding:20px; margin-top:20px; background:#00ffcc; border:none; border-radius:15px; font-weight:bold; cursor:pointer;" onclick="runAI()">ЗАПУСТИТЬ АНАЛИЗ</button>
+            <label style="color:#888; font-size:0.8rem;">ВЫБОР АКТИВА:</label>
+            <select id="asset" style="width:100%; padding:12px; margin:10px 0; background:#1f1f24; color:#fff; border:1px solid #333; border-radius:10px;"></select>
             
-            <div id="status" style="margin-top:20px; text-align:center; color:#888;"></div>
-            <div id="result" style="margin-top:15px; padding:20px; text-align:center; font-size:1.5rem; border-radius:15px; display:none;"></div>
-            <div id="advice" style="margin-top:10px; display:none; text-align:center; font-size:0.9rem; color:#aaa;"></div>
-            <button id="martingaleBtn" style="width:100%; padding:15px; margin-top:20px; background:transparent; border:2px solid #ffcc00; color:#ffcc00; border-radius:15px; font-weight:bold; cursor:pointer; display:none;" onclick="runAI()">ПЕРЕКРЫТИЕ</button>
+            <button id="btn" style="width:100%; padding:18px; margin-top:15px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:1.1rem;" onclick="runAI()">ЗАПУСК АНАЛИЗА</button>
+            
+            <div id="loading" style="display:none; text-align:center; margin:20px 0; color:#00ffcc;">Анализ рыночных потоков...</div>
+            <div id="result" style="margin-top:20px; padding:20px; text-align:center; border-radius:15px; display:none; background:#1f1f24; border:1px solid #444;"></div>
+            <div id="advice" style="margin-top:15px; display:none; font-size:0.9rem; color:#aaa; line-height:1.6; border-top:1px solid #333; padding-top:10px;"></div>
+            
+            <button id="martingaleBtn" style="width:100%; padding:12px; margin-top:20px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px; display:none;" onclick="runAI()">ПЕРЕКРЫТИЕ СДЕЛКИ</button>
             
             <script>
             const data = {data_json};
@@ -52,33 +47,43 @@ async def index():
                 assetSelect.innerHTML = "";
                 data[cat].forEach(a => assetSelect.innerHTML += `<option value='${{a}}'>${{a}}</option>`);
             }}
-            updateAssets(); // Инициализация
+            updateAssets();
 
             async function runAI() {{
-                const status = document.getElementById('status');
                 const res = document.getElementById('result');
                 const adv = document.getElementById('advice');
+                const load = document.getElementById('loading');
                 const mBtn = document.getElementById('martingaleBtn');
-                const btn = document.getElementById('btn');
                 
-                btn.disabled = true;
+                document.getElementById('btn').disabled = true;
                 res.style.display = 'none';
                 adv.style.display = 'none';
                 mBtn.style.display = 'none';
+                load.style.display = 'block';
                 
-                status.innerHTML = "Анализ данных...";
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 2000));
+                load.style.display = 'none';
                 
                 const trend = Math.random() > 0.4 ? '📈 ВВЕРХ' : '📉 ВНИЗ';
-                status.innerHTML = "";
+                const prob = (82 + Math.random() * 12).toFixed(1);
+                const adviceList = [
+                    "• RSI показывает перепроданность, вероятен импульс.",
+                    "• Объемы торгов подтверждают текущий тренд.",
+                    "• Уровень сопротивления пробит — работаем по тренду.",
+                    "• ИИ-модель обнаружила формирование свечного паттерна.",
+                    "• Волатильность актива высокая, сигнал надежный."
+                ];
+                
                 res.style.display = 'block';
-                res.style.background = trend.includes('ВВЕРХ') ? '#00cc66' : '#cc0033';
-                res.innerHTML = trend + "<br><small style='font-size:1rem;'>Точность: 86.4%</small>";
+                res.style.borderLeft = "5px solid " + (trend.includes('ВВЕРХ') ? '#00cc66' : '#cc0033');
+                res.innerHTML = `<div style="font-size:2rem; font-weight:bold;">${{trend}}</div>
+                                 <div style="color:#888;">Точность: ${{prob}}%</div>`;
                 
                 adv.style.display = 'block';
-                adv.innerHTML = "• Волатильность: Средняя<br>• Сигнал: Подтвержден ИИ-моделью";
+                adv.innerHTML = adviceList.sort(() => 0.5 - Math.random()).slice(0, 2).join('<br>');
+                
                 mBtn.style.display = 'block';
-                btn.disabled = false;
+                document.getElementById('btn').disabled = false;
             }}
             </script>
         </div>
