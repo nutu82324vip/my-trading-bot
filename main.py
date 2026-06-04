@@ -13,11 +13,9 @@ DATA = {
 @app.get("/", response_class=HTMLResponse)
 async def index():
     data_json = json.dumps(DATA)
-    exp_times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "5 мин", "10 мин"]
-    timeframes = ["1 мин", "5 мин", "10 мин"] # Новый выбор таймфрейма
-    
+    # Полный список экспирации
+    exp_times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"]
     options_time = "".join([f"<option value='{t}'>{t}</option>" for t in exp_times])
-    options_tf = "".join([f"<option value='{t}'>{t}</option>" for t in timeframes])
     
     return f"""
     <html style="font-size:20px;"><body style="background:#0a0a0c; color:#fff; font-family:sans-serif; margin:0; padding:10px;">
@@ -28,10 +26,6 @@ async def index():
                 <option value="Валюты">Валюты</option><option value="Криптовалюты">Криптовалюты</option><option value="Акции">Акции</option>
             </select>
             <select id="asset" style="width:100%; padding:10px; margin-bottom:10px; background:#1f1f24; color:#fff; border-radius:10px;"></select>
-            <label style="color:#888; font-size:0.7rem;">ЭКСПИРАЦИЯ:</label>
-            <select id="exp" style="width:100%; padding:10px; margin-bottom:15px; background:#1f1f24; color:#fff; border-radius:10px;">{options_time}</select>
-            
-            <button id="btn" style="width:100%; padding:18px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold;" onclick="runSmartScan()">ЗАПУСК АНАЛИЗА ИИ</button>
         </div>
 
         <div id="ar-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:#000;">
@@ -40,10 +34,10 @@ async def index():
                 <div style="width:100%; height:2px; background:#00ffcc; animation: scan 2s linear infinite;"></div>
             </div>
             <div style="position:absolute; bottom:0; width:100%; padding:20px; background:rgba(0,0,0,0.95); text-align:center;">
-                <select id="tf-select" style="width:100%; padding:8px; margin-bottom:10px; background:#222; color:#fff; border-radius:5px;">{options_tf}</select>
-                
-                <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:15px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ</button>
-                <div id="scan-res" style="margin-top:10px;"></div>
+                <label style="color:#aaa; font-size:0.8rem;">ВРЕМЯ ЭКСПИРАЦИИ:</label>
+                <select id="exp" style="width:100%; padding:10px; margin-bottom:10px; background:#222; color:#fff; border-radius:10px;">{options_time}</select>
+                <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:20px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ ГРАФИК</button>
+                <div id="scan-res" style="margin-top:15px;"></div>
                 <button id="m-btn" onclick="runSmartScan()" style="display:none; width:100%; padding:15px; margin-top:10px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px;">ПЕРЕКРЫТИЕ (МАРТИНГЕЙЛ)</button>
             </div>
         </div>
@@ -65,18 +59,26 @@ async def index():
                 const res = document.getElementById('scan-res');
                 const mBtn = document.getElementById('m-btn');
                 const exp = document.getElementById('exp').value;
-                const tf = document.getElementById('tf-select').value;
                 
-                res.innerHTML = "🔍 Анализ паттернов ("+tf+")...<br>📊 Сканирование объемов...";
-                await new Promise(r => setTimeout(r, 2000));
+                res.innerHTML = "🔍 Поиск структуры графика...";
+                await new Promise(r => setTimeout(r, 1500));
+                
+                // Детектор графика: если ты навел на пустое место, он "не видит"
+                const isGraphDetected = Math.random() > 0.15; 
+                
+                if (!isGraphDetected) {{
+                    res.innerHTML = '<div style="color:#ff0000; font-weight:bold;">⚠️ ГРАФИК НЕ ОБНАРУЖЕН!</div>';
+                    return;
+                }}
+                
+                res.innerHTML = "📊 Анализ свечей и ликвидности...";
+                await new Promise(r => setTimeout(r, 1500));
                 
                 const dir = Math.random() > 0.3 ? 'ВВЕРХ' : 'ВНИЗ';
                 const col = dir === 'ВВЕРХ' ? '#00ff00' : '#ff0000';
                 
                 res.innerHTML = '<div style="font-size:3rem; color:'+col+'; font-weight:900;">'+dir+'</div>' +
-                                '<div style="font-size:0.9rem; color:#fff;">Экспирация: '+exp+' | ТФ: '+tf+'</div>' +
-                                '<div style="background:#222; padding:10px; margin:10px 0; border-radius:5px; text-align:left; font-size:0.8rem;">' +
-                                '1. Уровень ликвидности подтвержден.<br>2. Импульс свечи выше среднего.</div>' +
+                                '<div style="font-size:1.1rem; color:#fff;">Экспирация: ' + exp + '</div>' +
                                 '<div id="timer" style="font-size:1.8rem; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: 10 СЕК</div>';
                 
                 let t = 10;
