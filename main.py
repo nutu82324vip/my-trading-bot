@@ -14,7 +14,10 @@ DATA = {
 async def index():
     data_json = json.dumps(DATA)
     exp_times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "5 мин", "10 мин"]
+    timeframes = ["1 мин", "5 мин", "10 мин"] # Новый выбор таймфрейма
+    
     options_time = "".join([f"<option value='{t}'>{t}</option>" for t in exp_times])
+    options_tf = "".join([f"<option value='{t}'>{t}</option>" for t in timeframes])
     
     return f"""
     <html style="font-size:20px;"><body style="background:#0a0a0c; color:#fff; font-family:sans-serif; margin:0; padding:10px;">
@@ -29,7 +32,6 @@ async def index():
             <select id="exp" style="width:100%; padding:10px; margin-bottom:15px; background:#1f1f24; color:#fff; border-radius:10px;">{options_time}</select>
             
             <button id="btn" style="width:100%; padding:18px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold;" onclick="runSmartScan()">ЗАПУСК АНАЛИЗА ИИ</button>
-            <div id="result" style="margin-top:20px; display:none; text-align:center;"></div>
         </div>
 
         <div id="ar-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:#000;">
@@ -38,8 +40,10 @@ async def index():
                 <div style="width:100%; height:2px; background:#00ffcc; animation: scan 2s linear infinite;"></div>
             </div>
             <div style="position:absolute; bottom:0; width:100%; padding:20px; background:rgba(0,0,0,0.95); text-align:center;">
-                <div id="scan-res" style="margin-bottom:10px;">Нажмите сканировать...</div>
-                <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:20px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ</button>
+                <select id="tf-select" style="width:100%; padding:8px; margin-bottom:10px; background:#222; color:#fff; border-radius:5px;">{options_tf}</select>
+                
+                <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:15px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ</button>
+                <div id="scan-res" style="margin-top:10px;"></div>
                 <button id="m-btn" onclick="runSmartScan()" style="display:none; width:100%; padding:15px; margin-top:10px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px;">ПЕРЕКРЫТИЕ (МАРТИНГЕЙЛ)</button>
             </div>
         </div>
@@ -61,17 +65,19 @@ async def index():
                 const res = document.getElementById('scan-res');
                 const mBtn = document.getElementById('m-btn');
                 const exp = document.getElementById('exp').value;
+                const tf = document.getElementById('tf-select').value;
                 
-                res.innerHTML = "🔍 АНАЛИЗ ПАТТЕРНОВ...<br>📊 Сканирование объемов...";
+                res.innerHTML = "🔍 Анализ паттернов ("+tf+")...<br>📊 Сканирование объемов...";
                 await new Promise(r => setTimeout(r, 2000));
                 
                 const dir = Math.random() > 0.3 ? 'ВВЕРХ' : 'ВНИЗ';
                 const col = dir === 'ВВЕРХ' ? '#00ff00' : '#ff0000';
                 
                 res.innerHTML = '<div style="font-size:3rem; color:'+col+'; font-weight:900;">'+dir+'</div>' +
-                                '<div style="font-size:1.2rem;">Экспирация: ' + exp + '</div>' +
-                                '<div style="font-size:1.2rem;">Вероятность ИИ: 94.2%</div>' +
-                                '<div id="timer" style="font-size:2rem; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: 10 СЕК</div>';
+                                '<div style="font-size:0.9rem; color:#fff;">Экспирация: '+exp+' | ТФ: '+tf+'</div>' +
+                                '<div style="background:#222; padding:10px; margin:10px 0; border-radius:5px; text-align:left; font-size:0.8rem;">' +
+                                '1. Уровень ликвидности подтвержден.<br>2. Импульс свечи выше среднего.</div>' +
+                                '<div id="timer" style="font-size:1.8rem; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: 10 СЕК</div>';
                 
                 let t = 10;
                 let interval = setInterval(() => {{
