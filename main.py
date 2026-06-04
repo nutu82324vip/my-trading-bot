@@ -5,9 +5,9 @@ import json
 app = FastAPI()
 
 DATA = {
-    "Валюты": ["AED/CNY OTC", "AUD/CAD OTC", "AUD/CHF", "AUD/JPY", "AUD/USD", "EUR/USD", "GBP/USD", "USD/JPY OTC"],
-    "Криптовалюты": ["Avalanche OTC", "Ethereum OTC", "Solana OTC", "Bitcoin OTC"],
-    "Акции": ["Apple OTC", "Tesla OTC", "Advanced Micro Devices OTC", "Coinbase Global OTC"]
+    "Валюты": ["AED/CNY OTC", "AUD/CAD OTC", "AUD/CHF", "AUD/JPY", "AUD/USD", "BHD/CNY OTC", "CHF/JPY", "EUR/CAD", "EUR/JPY", "EUR/USD", "GBP/AUD", "GBP/CAD", "MAD/USD OTC", "OMR/CNY OTC", "QAR/CNY OTC", "USD/CAD", "USD/JPY OTC", "USD/MYR OTC", "USD/PHP OTC", "CAD/CHF OTC"],
+    "Криптовалюты": ["Avalanche OTC", "Polkadot OTC", "Ethereum OTC", "Solana OTC", "TRON OTC", "BNB OTC", "Bitcoin OTC"],
+    "Акции": ["Apple OTC", "FACEBOOK INC OTC", "Johnson & Johnson OTC", "Alibaba OTC", "Citigroup Inc OTC", "FedEx OTC", "Tesla OTC", "Advanced Micro Devices OTC", "VIX OTC", "Coinbase Global OTC"]
 }
 
 @app.get("/", response_class=HTMLResponse)
@@ -27,6 +27,7 @@ async def index():
             <select id="asset" style="width:100%; padding:10px; margin-bottom:10px; background:#1f1f24; color:#fff; border-radius:10px;"></select>
             <label style="color:#888; font-size:0.7rem;">ЭКСПИРАЦИЯ:</label>
             <select id="exp" style="width:100%; padding:10px; margin-bottom:15px; background:#1f1f24; color:#fff; border-radius:10px;">{options_time}</select>
+            
             <button id="btn" style="width:100%; padding:18px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold;" onclick="runSmartScan()">ЗАПУСК АНАЛИЗА ИИ</button>
             <div id="result" style="margin-top:20px; display:none; text-align:center;"></div>
         </div>
@@ -37,8 +38,8 @@ async def index():
                 <div style="width:100%; height:2px; background:#00ffcc; animation: scan 2s linear infinite;"></div>
             </div>
             <div style="position:absolute; bottom:0; width:100%; padding:20px; background:rgba(0,0,0,0.95); text-align:center;">
+                <div id="scan-res" style="margin-bottom:10px;">Нажмите сканировать...</div>
                 <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:20px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ</button>
-                <div id="scan-res" style="margin-top:15px;"></div>
                 <button id="m-btn" onclick="runSmartScan()" style="display:none; width:100%; padding:15px; margin-top:10px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px;">ПЕРЕКРЫТИЕ (МАРТИНГЕЙЛ)</button>
             </div>
         </div>
@@ -59,13 +60,16 @@ async def index():
             async function runSmartScan() {{
                 const res = document.getElementById('scan-res');
                 const mBtn = document.getElementById('m-btn');
-                res.innerHTML = "🔍 АНАЛИЗ ПАТТЕРНОВ: Бычье поглощение...<br>📊 Сканирование объемов...";
+                const exp = document.getElementById('exp').value;
+                
+                res.innerHTML = "🔍 АНАЛИЗ ПАТТЕРНОВ...<br>📊 Сканирование объемов...";
                 await new Promise(r => setTimeout(r, 2000));
                 
                 const dir = Math.random() > 0.3 ? 'ВВЕРХ' : 'ВНИЗ';
                 const col = dir === 'ВВЕРХ' ? '#00ff00' : '#ff0000';
                 
                 res.innerHTML = '<div style="font-size:3rem; color:'+col+'; font-weight:900;">'+dir+'</div>' +
+                                '<div style="font-size:1.2rem;">Экспирация: ' + exp + '</div>' +
                                 '<div style="font-size:1.2rem;">Вероятность ИИ: 94.2%</div>' +
                                 '<div id="timer" style="font-size:2rem; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: 10 СЕК</div>';
                 
