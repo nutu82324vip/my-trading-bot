@@ -7,15 +7,17 @@ import json
 app = FastAPI()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# Функция обращения к ИИ
+# Функция обращения к ИИ (стабильная модель)
 async def get_ai_prediction(asset):
     try:
         prompt = f"Проанализируй график {asset}. Ты — профессиональный трейдер. Дай точный прогноз ВВЕРХ или ВНИЗ. Формат JSON: {{\"dir\": \"ВВЕРХ/ВНИЗ\", \"reason\": \"техническое обоснование\", \"accuracy\": \"95%\"}}"
         completion = client.chat.completions.create(
-            model="llama3-8b-8192", 
+            model="llama-3.3-70b-versatile", 
             messages=[{"role": "user", "content": prompt}]
         )
-        return json.loads(completion.choices[0].message.content.replace("```json", "").replace("```", ""))
+        # Убираем лишние символы форматирования, если они есть
+        content = completion.choices[0].message.content.replace("```json", "").replace("```", "").strip()
+        return json.loads(content)
     except Exception as e:
         return {"dir": "ОШИБКА", "reason": str(e), "accuracy": "0%"}
 
@@ -23,7 +25,6 @@ async def get_ai_prediction(asset):
 async def analyze(request: Request):
     data = await request.json()
     asset = data.get("asset")
-    # Оба режима теперь используют ИИ
     return await get_ai_prediction(asset)
 
 @app.get("/", response_class=HTMLResponse)
@@ -34,11 +35,12 @@ async def index():
         <h2 style="text-align:center; color:#00ffcc;">TRADING AI CORE</h2>
         <select id="asset" style="width:100%; margin-bottom:10px;">
             <option>EUR/USD</option><option>GBP/USD</option><option>USD/JPY</option><option>BTC/USD</option>
+            <option>ETH/USD</option><option>GBP/JPY</option><option>AUD/USD</option>
         </select>
         <label><b>ЭКСПИРАЦИЯ СДЕЛКИ:</b></label>
         <select id="time" style="width:100%; margin-bottom:15px;">
-            <option>5 сек</option><option>15 сек</option><option>30 сек</option><option>1 мин</option><option>2 мин</option>
-            <option>3 мин</option><option>4 мин</option><option>5 мин</option><option>10 мин</option>
+            <option>5 сек</option><option>15 сек</option><option>30 сек</option><option>1 мин</option>
+            <option>2 мин</option><option>3 мин</option><option>4 мин</option><option>5 мин</option><option>10 мин</option>
         </select>
         <button onclick="go()" style="width:100%; padding:15px; background:#00ffcc; color:#000; font-weight:bold; border:none; border-radius:5px;">ЗАПУСТИТЬ ИИ-АНАЛИЗ</button>
         <div id="cd" style="margin-top:15px; text-align:center; color:#ffcc00; font-weight:bold;"></div>
@@ -55,7 +57,11 @@ async def index():
                 if(count <= 0) {
                     clearInterval(timer);
                     cd.innerHTML = "ИИ АНАЛИЗИРУЕТ...";
-                    const resp = await fetch('/analyze', {method:'POST', body:JSON.stringify({asset:document.getElementById('asset').value}), headers:{'Content-Type':'application/json'}});
+                    const resp = await fetch('/analyze', {
+                        method:'POST', 
+                        body:JSON.stringify({asset:document.getElementById('asset').value}), 
+                        headers:{'Content-Type':'application/json'}
+                    });
                     const d = await resp.json();
                     res.innerHTML = `<div style="font-size:2rem; font-weight:bold; color:${d.dir=='ВВЕРХ'?'#00ff00':'#ff0000'}">${d.dir}</div>
                                      <p style="font-size:0.9rem;">${d.reason}</p><b>Точность: ${d.accuracy}</b>`;
