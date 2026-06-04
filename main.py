@@ -13,9 +13,8 @@ DATA = {
 @app.get("/", response_class=HTMLResponse)
 async def index():
     data_json = json.dumps(DATA)
-    # Полный список экспирации
-    exp_times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"]
-    options_time = "".join([f"<option value='{t}'>{t}</option>" for t in exp_times])
+    times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"]
+    options = "".join([f"<option value='{t}'>{t}</option>" for t in times])
     
     return f"""
     <html style="font-size:20px;"><body style="background:#0a0a0c; color:#fff; font-family:sans-serif; margin:0; padding:10px;">
@@ -29,22 +28,23 @@ async def index():
         </div>
 
         <div id="ar-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:#000;">
-            <video id="video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
-            <div style="position:absolute; top:20%; left:10%; width:80%; height:40%; border:3px solid #00ffcc; border-radius:15px;">
-                <div style="width:100%; height:2px; background:#00ffcc; animation: scan 2s linear infinite;"></div>
-            </div>
-            <div style="position:absolute; bottom:0; width:100%; padding:20px; background:rgba(0,0,0,0.95); text-align:center;">
-                <label style="color:#aaa; font-size:0.8rem;">ВРЕМЯ ЭКСПИРАЦИИ:</label>
-                <select id="exp" style="width:100%; padding:10px; margin-bottom:10px; background:#222; color:#fff; border-radius:10px;">{options_time}</select>
-                <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:20px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ ГРАФИК</button>
-                <div id="scan-res" style="margin-top:15px;"></div>
-                <button id="m-btn" onclick="runSmartScan()" style="display:none; width:100%; padding:15px; margin-top:10px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px;">ПЕРЕКРЫТИЕ (МАРТИНГЕЙЛ)</button>
+            <video id="video" autoplay playsinline style="width:100%; height:60%; object-fit:cover;"></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+            
+            <div style="padding:15px; background:rgba(0,0,0,0.95); text-align:center;">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <select id="int" style="flex:1; padding:10px; background:#222; color:#fff; border-radius:8px;">{options}</select>
+                    <select id="exp" style="flex:1; padding:10px; background:#222; color:#fff; border-radius:8px;">{options}</select>
+                </div>
+                <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:15px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ ГРАФИК</button>
+                <div id="scan-res" style="margin-top:10px; min-height:80px;"></div>
+                <button id="m-btn" onclick="runSmartScan()" style="display:none; width:100%; padding:15px; margin-top:5px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px;">ПЕРЕКРЫТИЕ</button>
             </div>
         </div>
             
-        <style>@keyframes scan {{ 0% {{ top:0%; }} 50% {{ top:100%; }} 100% {{ top:0%; }} }}</style>
         <script>
             const data = {data_json};
+            const video = document.getElementById('video');
             function updateAssets() {{
                 const cat = document.getElementById('cat').value;
                 const asset = document.getElementById('asset');
@@ -53,39 +53,46 @@ async def index():
             }}
             updateAssets();
 
-            function openScanner() {{ document.getElementById('ar-overlay').style.display = 'block'; navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }}).then(s => {{ document.getElementById('video').srcObject = s; }}); }}
+            function openScanner() {{ 
+                document.getElementById('ar-overlay').style.display = 'block'; 
+                navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }}).then(s => video.srcObject = s); 
+            }}
             
             async function runSmartScan() {{
                 const res = document.getElementById('scan-res');
-                const mBtn = document.getElementById('m-btn');
-                const exp = document.getElementById('exp').value;
+                res.innerHTML = "🔍 Анализ свечей...";
                 
-                res.innerHTML = "🔍 Поиск структуры графика...";
-                await new Promise(r => setTimeout(r, 1500));
+                // Обработка пикселей через Canvas
+                const canvas = document.getElementById('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const frame = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
                 
-                // Детектор графика: если ты навел на пустое место, он "не видит"
-                const isGraphDetected = Math.random() > 0.15; 
+                let green = 0, red = 0;
+                for(let i=0; i < frame.length; i+=4) {{
+                    if(frame[i+1] > 150 && frame[i] < 100) green++;
+                    if(frame[i] > 150 && frame[i+1] < 100) red++;
+                }}
                 
-                if (!isGraphDetected) {{
-                    res.innerHTML = '<div style="color:#ff0000; font-weight:bold;">⚠️ ГРАФИК НЕ ОБНАРУЖЕН!</div>';
+                // Проверка: видит ли бот график
+                if(green < 1000 && red < 1000) {{
+                    res.innerHTML = '<div style="color:red; font-weight:bold;">⚠️ ГРАФИК НЕ ОБНАРУЖЕН!</div>';
                     return;
                 }}
                 
-                res.innerHTML = "📊 Анализ свечей и ликвидности...";
-                await new Promise(r => setTimeout(r, 1500));
+                const dir = green > red ? "ВВЕРХ" : "ВНИЗ";
+                const col = dir === "ВВЕРХ" ? "#00ff00" : "#ff0000";
                 
-                const dir = Math.random() > 0.3 ? 'ВВЕРХ' : 'ВНИЗ';
-                const col = dir === 'ВВЕРХ' ? '#00ff00' : '#ff0000';
-                
-                res.innerHTML = '<div style="font-size:3rem; color:'+col+'; font-weight:900;">'+dir+'</div>' +
-                                '<div style="font-size:1.1rem; color:#fff;">Экспирация: ' + exp + '</div>' +
-                                '<div id="timer" style="font-size:1.8rem; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: 10 СЕК</div>';
+                res.innerHTML = `<div style="font-size:3rem; color:${{col}}; font-weight:900;">${{dir}}</div>
+                                 <div style="font-size:1rem;">Интервал: ${{document.getElementById('int').value}} | Эксп: ${{document.getElementById('exp').value}}</div>
+                                 <div id="timer" style="font-size:1.5rem; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: 10 СЕК</div>`;
                 
                 let t = 10;
                 let interval = setInterval(() => {{
                     t--;
                     document.getElementById('timer').innerText = "ВХОД ЧЕРЕЗ: " + t + " СЕК";
-                    if (t <= 0) {{ clearInterval(interval); document.getElementById('timer').innerText = "ВХОДИТЕ СЕЙЧАС!"; mBtn.style.display = 'block'; }}
+                    if (t <= 0) {{ clearInterval(interval); document.getElementById('timer').innerText = "ВХОДИТЕ СЕЙЧАС!"; document.getElementById('m-btn').style.display = 'block'; }}
                 }}, 1000);
             }}
         </script>
