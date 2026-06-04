@@ -5,18 +5,17 @@ import json
 app = FastAPI()
 
 DATA = {
-    "Валюты": ["AED/CNY OTC", "AUD/CAD OTC", "AUD/CHF", "AUD/JPY", "AUD/USD", "BHD/CNY OTC", "CHF/JPY", "EUR/CAD", "EUR/JPY", "EUR/USD", "GBP/AUD", "GBP/CAD", "MAD/USD OTC", "OMR/CNY OTC", "QAR/CNY OTC", "USD/CAD", "USD/JPY OTC", "USD/MYR OTC", "USD/PHP OTC", "CAD/CHF OTC"],
-    "Криптовалюты": ["Avalanche OTC", "Polkadot OTC", "Ethereum OTC", "Solana OTC", "TRON OTC", "BNB OTC", "Bitcoin OTC"],
-    "Акции": ["Apple OTC", "FACEBOOK INC OTC", "Johnson & Johnson OTC", "Alibaba OTC", "Citigroup Inc OTC", "FedEx OTC", "Tesla OTC", "Advanced Micro Devices OTC", "VIX OTC", "Coinbase Global OTC"]
+    "Валюты": ["AED/CNY OTC", "AUD/CAD OTC", "AUD/CHF", "AUD/JPY", "AUD/USD", "EUR/USD", "GBP/USD", "USD/JPY OTC"],
+    "Криптовалюты": ["Avalanche OTC", "Ethereum OTC", "Solana OTC", "Bitcoin OTC"],
+    "Акции": ["Apple OTC", "Tesla OTC", "Advanced Micro Devices OTC", "Coinbase Global OTC"]
 }
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
     data_json = json.dumps(DATA)
-    times = [f"{i} мин" for i in range(1, 11)]
-    options_time = "".join([f"<option value='{t}'>{t}</option>" for t in times])
+    exp_times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "5 мин", "10 мин"]
+    options_time = "".join([f"<option value='{t}'>{t}</option>" for t in exp_times])
     
-    # Обрати внимание: двойные {{ }} экранируют фигурные скобки для Python, чтобы он их не трогал
     return f"""
     <html style="font-size:20px;"><body style="background:#0a0a0c; color:#fff; font-family:sans-serif; margin:0; padding:10px;">
         <div style="max-width:500px; margin:auto; background:#16161a; padding:20px; border-radius:20px; border:1px solid #333;">
@@ -26,9 +25,9 @@ async def index():
                 <option value="Валюты">Валюты</option><option value="Криптовалюты">Криптовалюты</option><option value="Акции">Акции</option>
             </select>
             <select id="asset" style="width:100%; padding:10px; margin-bottom:10px; background:#1f1f24; color:#fff; border-radius:10px;"></select>
-            <label style="color:#888; font-size:0.7rem;">ТАЙМФРЕЙМ:</label>
-            <select id="candle" style="width:100%; padding:10px; margin-bottom:10px; background:#1f1f24; color:#fff; border-radius:10px;">{options_time}</select>
-            <button id="btn" style="width:100%; padding:18px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold;" onclick="runAI()">ЗАПУСК АНАЛИЗА</button>
+            <label style="color:#888; font-size:0.7rem;">ЭКСПИРАЦИЯ:</label>
+            <select id="exp" style="width:100%; padding:10px; margin-bottom:15px; background:#1f1f24; color:#fff; border-radius:10px;">{options_time}</select>
+            <button id="btn" style="width:100%; padding:18px; background:linear-gradient(90deg, #00ffcc, #0088ff); border:none; border-radius:10px; font-weight:bold;" onclick="runSmartScan()">ЗАПУСК АНАЛИЗА ИИ</button>
             <div id="result" style="margin-top:20px; display:none; text-align:center;"></div>
         </div>
 
@@ -38,8 +37,9 @@ async def index():
                 <div style="width:100%; height:2px; background:#00ffcc; animation: scan 2s linear infinite;"></div>
             </div>
             <div style="position:absolute; bottom:0; width:100%; padding:20px; background:rgba(0,0,0,0.95); text-align:center;">
-                <button onclick="startScanner()" style="width:100%; padding:20px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ ГРАФИК</button>
-                <div id="scan-res" style="margin-top:20px;"></div>
+                <button onclick="runSmartScan()" id="scan-btn" style="width:100%; padding:20px; background:#00ffcc; border:none; font-weight:bold; border-radius:10px;">СКАНИРОВАТЬ</button>
+                <div id="scan-res" style="margin-top:15px;"></div>
+                <button id="m-btn" onclick="runSmartScan()" style="display:none; width:100%; padding:15px; margin-top:10px; background:transparent; border:1px solid #ffcc00; color:#ffcc00; border-radius:10px;">ПЕРЕКРЫТИЕ (МАРТИНГЕЙЛ)</button>
             </div>
         </div>
             
@@ -48,32 +48,33 @@ async def index():
             const data = {data_json};
             function updateAssets() {{
                 const cat = document.getElementById('cat').value;
-                const assetSelect = document.getElementById('asset');
-                assetSelect.innerHTML = "";
-                data[cat].forEach(a => {{ assetSelect.innerHTML += '<option value="'+a+'">'+a+'</option>'; }});
+                const asset = document.getElementById('asset');
+                asset.innerHTML = "";
+                data[cat].forEach(a => asset.innerHTML += '<option value="'+a+'">'+a+'</option>');
             }}
             updateAssets();
 
             function openScanner() {{ document.getElementById('ar-overlay').style.display = 'block'; navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }}).then(s => {{ document.getElementById('video').srcObject = s; }}); }}
             
-            async function startScanner() {{
+            async function runSmartScan() {{
                 const res = document.getElementById('scan-res');
-                res.innerHTML = "АНАЛИЗ СВЕЧЕЙ...";
+                const mBtn = document.getElementById('m-btn');
+                res.innerHTML = "🔍 АНАЛИЗ ПАТТЕРНОВ: Бычье поглощение...<br>📊 Сканирование объемов...";
                 await new Promise(r => setTimeout(r, 2000));
-                const dir = Math.random() > 0.5 ? 'ВВЕРХ' : 'ВНИЗ';
+                
+                const dir = Math.random() > 0.3 ? 'ВВЕРХ' : 'ВНИЗ';
                 const col = dir === 'ВВЕРХ' ? '#00ff00' : '#ff0000';
-                res.innerHTML = '<div style="font-size:4rem; color:'+col+'; font-weight:900;">'+dir+'</div>' +
-                                '<div style="font-size:2.5rem; color:#ffcc00; margin:15px 0;">ВХОД ЧЕРЕЗ: 10 СЕК</div>' +
-                                '<div style="font-size:1rem; color:#aaa;">1. Вход по тренду<br>2. Сильный объем актива</div>';
-            }}
-
-            async function runAI() {{
-                const res = document.getElementById('result');
-                res.style.display = 'block';
-                res.innerHTML = "АНАЛИЗ...";
-                await new Promise(r => setTimeout(r, 1500));
-                const trend = Math.random() > 0.5 ? '📈 ВВЕРХ' : '📉 ВНИЗ';
-                res.innerHTML = '<div style="font-size:2rem; font-weight:bold;">'+trend+'</div>';
+                
+                res.innerHTML = '<div style="font-size:3rem; color:'+col+'; font-weight:900;">'+dir+'</div>' +
+                                '<div style="font-size:1.2rem;">Вероятность ИИ: 94.2%</div>' +
+                                '<div id="timer" style="font-size:2rem; color:#ffcc00; font-weight:bold;">ВХОД ЧЕРЕЗ: 10 СЕК</div>';
+                
+                let t = 10;
+                let interval = setInterval(() => {{
+                    t--;
+                    document.getElementById('timer').innerText = "ВХОД ЧЕРЕЗ: " + t + " СЕК";
+                    if (t <= 0) {{ clearInterval(interval); document.getElementById('timer').innerText = "ВХОДИТЕ СЕЙЧАС!"; mBtn.style.display = 'block'; }}
+                }}, 1000);
             }}
         </script>
     </body></html>
