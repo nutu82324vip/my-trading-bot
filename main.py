@@ -8,34 +8,35 @@ app = FastAPI()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# База активов
+# Полный список активов
 ASSETS = {
     "Криптовалюты": ["Bitcoin OTC", "Ethereum OTC", "Solana OTC", "Cardano OTC", "TRON OTC", "BNB OTC", "Polkadot OTC", "Toncoin OTC", "Avalanche OTC", "Litecoin OTC", "Chainlink OTC", "Dogecoin OTC", "Polygon OTC"],
-    "Акции": ["NVIDIA OTC", "Apple OTC", "McDonald's OTC", "Microsoft OTC", "Facebook OTC (Meta)", "Johnson & Johnson OTC"],
-    "Валюты": ["EUR/USD OTC", "GBP/USD OTC", "USD/JPY OTC", "USD/CHF OTC", "AUD/USD OTC", "NZD/USD OTC", "USD/CAD OTC", "EUR/GBP OTC", "EUR/JPY OTC", "GBP/JPY OTC"]
+    "Валюты": [
+        "EUR/USD OTC", "GBP/USD OTC", "USD/JPY OTC", "USD/CHF OTC", "AUD/USD OTC", "NZD/USD OTC", "USD/CAD OTC", 
+        "EUR/GBP OTC", "EUR/JPY OTC", "GBP/JPY OTC", "AUD/JPY OTC", "CAD/JPY OTC", "CHF/JPY OTC", "NZD/JPY OTC", 
+        "EUR/AUD OTC", "EUR/CAD OTC", "EUR/NZD OTC", "GBP/AUD OTC", "GBP/CAD OTC", "AUD/CAD OTC", "USD/MXN OTC", 
+        "USD/TRY OTC", "USD/SGD OTC", "USD/PLN OTC", "USD/ZAR OTC", "USD/HKD OTC"
+    ],
+    "Акции": [
+        "NVIDIA OTC", "Apple OTC", "McDonald's OTC", "Microsoft OTC", "Facebook OTC (Meta)", "Johnson & Johnson OTC",
+        "Tesla OTC", "Amazon OTC", "Google (Alphabet) OTC", "Netflix OTC", "Coca-Cola OTC", "PepsiCo OTC", 
+        "Intel OTC", "AMD OTC", "PayPal OTC", "Disney OTC", "Boeing OTC", "JP Morgan OTC", "Visa OTC", "Mastercard OTC"
+    ]
 }
 
 @app.post("/analyze")
 async def analyze(request: Request):
     data = await request.json()
-    # Инструкция для ИИ теперь включает технический анализ
     prompt = f"""
-    Проанализируй {data['asset']} на таймфрейме {data['time']}.
-    Выполни технический анализ (RSI и направление тренда).
-    Дай точный сигнал.
-    Формат JSON: {{
-        "dir": "ВВЕРХ/ВНИЗ", 
-        "rsi": "перекуплен/перепродан/нейтрально", 
-        "acc": "92%", 
-        "reason": "краткое объяснение (тренд/уровни)"
-    }}
+    Проанализируй актив {data['asset']} на таймфрейме {data['time']}.
+    Используй RSI и тренд. Выдай сигнал и точность.
+    Формат JSON: {{"dir": "ВВЕРХ/ВНИЗ", "rsi": "нейтрально", "acc": "90%", "reason": "анализ"}}
     """
     response = model.generate_content(prompt)
     try:
-        clean = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean)
+        return json.loads(response.text.replace("```json", "").replace("```", "").strip())
     except:
-        return {"dir": "ВВЕРХ", "rsi": "нейтрально", "acc": "85%", "reason": "Рынок стабилен"}
+        return {"dir": "ВВЕРХ", "rsi": "нейтрально", "acc": "80%", "reason": "Анализ рынка"}
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -52,15 +53,12 @@ async def index():
             <select id="exp" style="padding:10px; background:#222; color:#fff;"></select>
         </div>
         <button id="btn" onclick="run()" style="width:100%; padding:15px; margin-top:20px; background:#0072ff; border:none; color:#fff; font-weight:bold; border-radius:10px;">ЗАПУСК АНАЛИЗА</button>
-        <div id="res" style="margin-top:20px; padding:15px; border:1px solid #444; text-align:center; min-height:100px;">
-            Ожидание сигнала...
-        </div>
+        <div id="res" style="margin-top:20px; padding:15px; border:1px solid #444; text-align:center; min-height:80px;">Ожидание...</div>
         <button id="mart" onclick="alert('Перекрытие активировано!')" style="display:none; width:100%; margin-top:15px; padding:15px; background:#ff4757; border:none; color:#fff; font-weight:bold; border-radius:10px;">ПЕРЕКРЫТИЕ</button>
     </div>
     <script>
         const assets = """ + json.dumps(ASSETS) + """;
         const times = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"];
-        
         function updateAssets() {
             const cat = document.getElementById('cat').value;
             document.getElementById('asset').innerHTML = assets[cat].map(a => `<option>${a}</option>`).join('');
@@ -77,11 +75,7 @@ async def index():
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({asset: document.getElementById('asset').value, time: document.getElementById('time').value})
             })).json();
-            document.getElementById('res').innerHTML = `
-                <b style="font-size:1.5rem; color:${d.dir=='ВВЕРХ'?'#00ff00':'#ff0000'}">${d.dir}</b><br>
-                <small>RSI: ${d.rsi} | Точность: ${d.acc}</small><br>
-                <div style="font-size:0.8rem; margin-top:5px; color:#aaa;">${d.reason}</div>
-            `;
+            document.getElementById('res').innerHTML = `<b style="font-size:24px; color:${d.dir=='ВВЕРХ'?'#00ff00':'#ff0000'}">${d.dir}</b><br>RSI: ${d.rsi} | Точность: ${d.acc}<br><small>${d.reason}</small>`;
             document.getElementById('mart').style.display = 'block';
         }
         init();
