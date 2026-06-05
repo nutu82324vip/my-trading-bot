@@ -33,7 +33,7 @@ async def index():
         <div id="res" style="font-size:52px; font-weight:800; margin:10px 0; color:#1a1a1a;">--</div>
         <div id="timer" style="font-size:20px; font-weight:bold; margin-bottom:20px; color:#ff4757;">--</div>
         
-        <button id="mart" onclick="alert('Перекрытие активировано!')" style="display:none; width:100%; padding:15px; background:transparent; border:2px solid #ff4757; color:#ff4757; font-weight:bold; border-radius:15px; margin-bottom:20px;">ПЕРЕКРЫТИЕ</button>
+        <button id="mart" onclick="activateMart()" style="display:none; width:100%; padding:15px; background:transparent; border:2px solid #ff4757; color:#ff4757; font-weight:bold; border-radius:15px; margin-bottom:20px; transition:0.3s;">ПЕРЕКРЫТИЕ</button>
 
         <div style="text-align:left; font-size:12px; color:#999; line-height:1.6;">
             <p><b>• Совет 1:</b> Не используйте более 2-х перекрытий.</p>
@@ -55,6 +55,14 @@ async def index():
         
         function upd(){ let c=document.getElementById('cat').value; document.getElementById('asset').innerHTML = data[c].map(a => `<option>${a}</option>`).join(''); }
         
+        // Красивая активация без всплывающего окна
+        function activateMart(){
+            const btn = document.getElementById('mart');
+            btn.style.background = "#ff4757";
+            btn.style.color = "white";
+            btn.innerText = "ПЕРЕКРЫТИЕ АКТИВИРОВАНО";
+        }
+        
         async function run(){
             document.getElementById('runBtn').disabled = true;
             document.getElementById('status').innerText = "ИИ делает глубокий анализ графиков...";
@@ -63,7 +71,14 @@ async def index():
             
             document.getElementById('status').innerText = "Сигнал:";
             document.getElementById('res').innerText = Math.random() > 0.5 ? "ВВЕРХ" : "ВНИЗ";
-            document.getElementById('mart').style.display = 'block';
+            
+            // Сброс состояния кнопки перед показом
+            const btn = document.getElementById('mart');
+            btn.style.display = 'block';
+            btn.style.background = "transparent";
+            btn.style.color = "#ff4757";
+            btn.innerText = "ПЕРЕКРЫТИЕ";
+            
             document.getElementById('runBtn').disabled = false;
             
             let t = 10;
