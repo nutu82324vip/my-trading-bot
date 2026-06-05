@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
+# Все активы для выбора
 ASSETS = {
     "Валюты OTC": ["EUR/USD OTC", "GBP/USD OTC", "USD/JPY OTC", "AUD/USD OTC", "EUR/JPY OTC", "USD/CAD OTC", "GBP/JPY OTC", "NZD/USD OTC", "USD/CHF OTC", "EUR/GBP OTC", "AUD/JPY OTC", "CHF/JPY OTC", "EUR/CAD OTC"],
     "Крипта OTC": ["Bitcoin OTC", "Ethereum OTC", "Cardano OTC", "Chainlink OTC", "Solana OTC", "TRON OTC", "Avalanche OTC", "Polygon OTC", "BNB OTC", "Bitcoin ETF OTC"],
@@ -13,51 +14,63 @@ ASSETS = {
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return """
-    <html style="background:#eef2f5; color:#333; font-family:'Roboto', sans-serif;">
+    <html style="background:#f0f2f5; color:#1a1a1a; font-family:'Inter', sans-serif;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <div style="max-width:400px; margin:20px auto; padding:25px; background:white; border-radius:30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align:center;">
-        <h2 style="color:#007bff; margin-bottom:5px;">QUANTUM CORE v4.2</h2>
-        <p style="font-size:12px; color:#888;">NEURAL MARKET ANALYZER</p>
+    <div style="max-width:420px; margin:20px auto; padding:30px; background:white; border-radius:35px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); text-align:center;">
+        <h2 style="font-size:22px; margin-bottom:5px;">QUANTUM CORE v4.2</h2>
+        <div style="font-size:12px; color:#888; letter-spacing:2px; margin-bottom:25px;">NEURAL INTERFACE ACTIVE</div>
         
-        <select id="cat" onchange="upd()" style="width:100%; padding:14px; margin:8px 0; border:2px solid #e0e0e0; border-radius:15px;"></select>
-        <select id="asset" style="width:100%; padding:14px; margin:8px 0; border:2px solid #e0e0e0; border-radius:15px;"></select>
+        <select id="cat" onchange="upd()" style="width:100%; padding:15px; margin:5px 0; background:#f8f9fa; border:none; border-radius:15px; font-weight:600;"></select>
+        <select id="asset" style="width:100%; padding:15px; margin:5px 0; background:#f8f9fa; border:none; border-radius:15px; font-weight:600;"></select>
         
-        <button id="runBtn" onclick="run()" style="width:100%; padding:18px; margin-top:20px; background:#007bff; border:none; color:white; font-weight:bold; border-radius:15px; cursor:pointer;">ЗАПУСК АНАЛИЗА</button>
-        
-        <div id="status" style="margin:20px 0; font-weight:bold; color:#555; height:20px;"></div>
-        <div id="res" style="font-size:48px; font-weight:900; margin:10px 0; color:#007bff;">--</div>
-        <div id="timer" style="font-size:18px; color:#ff9800; font-weight:bold;">--</div>
-        
-        <button id="mart" onclick="alert('Перекрытие активировано!')" style="display:none; width:100%; padding:14px; margin-top:15px; background:#ff4757; border:none; color:white; font-weight:bold; border-radius:15px;">ПЕРЕКРЫТИЕ</button>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin:10px 0;">
+            <select id="time" style="padding:15px; background:#f8f9fa; border:none; border-radius:15px;"></select>
+            <select id="exp" style="padding:15px; background:#f8f9fa; border:none; border-radius:15px;"></select>
+        </div>
 
-        <div id="tips" style="margin-top:25px; padding:15px; background:#f8f9fa; border-radius:20px; font-size:13px; color:#666; display:none;">
-            <p><i>ИИ анализирует 4.2 млрд котировок...</i></p>
-            <p><b>• Совет:</b> Используйте 1% от баланса.</p>
+        <button id="runBtn" onclick="run()" style="width:100%; padding:18px; margin-top:15px; background:#1a1a1a; border:none; color:white; font-weight:bold; border-radius:15px; cursor:pointer; font-size:16px;">ЗАПУСК АНАЛИЗА</button>
+        
+        <div id="status" style="margin:25px 0; font-size:14px; color:#666; height:20px;">Ожидание команды...</div>
+        <div id="res" style="font-size:52px; font-weight:800; margin:10px 0; color:#1a1a1a;">--</div>
+        <div id="timer" style="font-size:20px; font-weight:bold; margin-bottom:20px; color:#ff4757;">--</div>
+        
+        <button id="mart" onclick="alert('Перекрытие активировано!')" style="display:none; width:100%; padding:15px; background:transparent; border:2px solid #ff4757; color:#ff4757; font-weight:bold; border-radius:15px; margin-bottom:20px;">ПЕРЕКРЫТИЕ</button>
+
+        <div style="text-align:left; font-size:12px; color:#999; line-height:1.6;">
+            <p><b>• Совет 1:</b> Не используйте более 2-х перекрытий.</p>
+            <p><b>• Совет 2:</b> Соблюдайте мани-менеджмент 1-2% от банка.</p>
         </div>
     </div>
     <script>
         const data = """ + json.dumps(ASSETS) + """;
+        const options = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"];
+        
+        function init(){
+            options.forEach(o => {
+                document.getElementById('time').innerHTML += `<option>${o}</option>`;
+                document.getElementById('exp').innerHTML += `<option>${o}</option>`;
+            });
+            Object.keys(data).forEach(c => document.getElementById('cat').innerHTML += `<option>${c}</option>`);
+            upd();
+        }
+        
         function upd(){ let c=document.getElementById('cat').value; document.getElementById('asset').innerHTML = data[c].map(a => `<option>${a}</option>`).join(''); }
-        Object.keys(data).forEach(c => document.getElementById('cat').innerHTML += `<option>${c}</option>`);
-        upd();
         
         async function run(){
             document.getElementById('runBtn').disabled = true;
-            document.getElementById('status').innerText = "ИИ делает глубокий анализ графика...";
+            document.getElementById('status').innerText = "ИИ делает глубокий анализ графиков...";
             document.getElementById('res').innerText = "...";
-            document.getElementById('tips').style.display = 'block';
-            
             await new Promise(r => setTimeout(r, 3000));
             
-            const sigs = ["ВВЕРХ", "ВНИЗ"];
-            document.getElementById('status').innerText = "Сигнал готов:";
-            document.getElementById('res').innerHTML = `<span style='color:#28a745;'>${sigs[Math.floor(Math.random()*2)]}</span>`;
+            document.getElementById('status').innerText = "Сигнал:";
+            document.getElementById('res').innerText = Math.random() > 0.5 ? "ВВЕРХ" : "ВНИЗ";
             document.getElementById('mart').style.display = 'block';
             document.getElementById('runBtn').disabled = false;
             
             let t = 10;
-            let i = setInterval(()=>{ t--; document.getElementById('timer').innerText = "ВХОД ЧЕРЕЗ: " + t + " сек"; if(t<=0) clearInterval(i); }, 1000);
+            let i = setInterval(()=>{ t--; document.getElementById('timer').innerText = "ВХОД В СДЕЛКУ: " + t + " сек"; if(t<=0) clearInterval(i); }, 1000);
         }
+        init();
     </script>
     </html>
     """
