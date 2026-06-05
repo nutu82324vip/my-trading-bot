@@ -3,43 +3,57 @@ import google.generativeai as genai
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import HTMLResponse
 import json
+import base64
 
 app = FastAPI()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-@app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
-    image = file.file.read()
-    # Запрос к Vision AI
-    prompt = "Проанализируй график на фото. Дай прогноз: ВВЕРХ или ВНИЗ. Выведи строго JSON: {'dir': 'ВВЕРХ/ВНИЗ', 'reason': 'анализ', 'accuracy': '90%'}"
-    response = model.generate_content([prompt, {"mime_type": "image/jpeg", "data": image}])
+@app.post("/analyze_frame")
+async def analyze_frame(request: Request):
+    data = await request.json()
+    image_data = base64.b64decode(data['image'].split(',')[1])
     
-    clean = response.text.replace("```json", "").replace("```", "").strip()
-    return json.loads(clean)
+    prompt = "Проанализируй график. Если тренд явно ВВЕРХ, пиши ВВЕРХ, если ВНИЗ — пиши ВНИЗ. Формат JSON: {'dir': 'ВВЕРХ/ВНИЗ', 'accuracy': '90%'}"
+    response = model.generate_content([prompt, {"mime_type": "image/jpeg", "data": image_data}])
+    
+    try:
+        return json.loads(response.text.replace("```json", "").replace("```", "").strip())
+    except:
+        return {"dir": "АНАЛИЗ...", "accuracy": "0%"}
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return """
     <html style="background:#0a0a0c; color:#fff; font-family:sans-serif;">
-    <div style="width:400px; margin:20px auto; padding:20px; border:1px solid #444; background:#121212;">
-        <h2 style="color:#00ffcc;">AI SCANNER CAMERA</h2>
-        <input type="file" id="cam" accept="image/*" capture="environment" style="width:100%; margin-bottom:20px;">
-        <button onclick="go()" style="width:100%; padding:15px; background:#00ffcc; border:none; font-weight:bold;">АНАЛИЗ ФОТО</button>
-        <div id="res" style="margin-top:20px; text-align:center;"></div>
+    <div style="width:100%; max-width:400px; margin:auto; text-align:center;">
+        <h2>LIVE SCANNER</h2>
+        <video id="video" autoplay playsinline style="width:100%; border:2px solid #333;"></video>
+        <div id="res" style="font-size:3rem; font-weight:bold; margin-top:20px;">ОЖИДАНИЕ...</div>
+        <canvas id="canvas" style="display:none;"></canvas>
     </div>
     <script>
-        async function go() {
-            const file = document.getElementById('cam').files[0];
-            const res = document.getElementById('res');
-            const fd = new FormData();
-            fd.append('file', file);
-            res.innerHTML = "ИИ смотрит на график...";
-            const resp = await fetch('/analyze', {method:'POST', body:fd});
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const res = document.getElementById('res');
+        
+        navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(s => video.srcObject = s);
+        
+        setInterval(async () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const data = canvas.toDataURL('image/jpeg');
+            
+            const resp = await fetch('/analyze_frame', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({image: data})
+            });
             const d = await resp.json();
-            res.innerHTML = `<div style="font-size:2rem; font-weight:bold; color:${d.dir=='ВВЕРХ'?'#00ff00':'#ff0000'}">${d.dir}</div>
-                             <p>${d.reason}</p><b>Точность: ${d.accuracy}</b>`;
-        }
+            res.style.color = d.dir=='ВВЕРХ' ? '#00ff00' : '#ff0000';
+            res.innerHTML = d.dir;
+        }, 3000);
     </script>
     </html>
     """
