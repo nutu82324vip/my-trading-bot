@@ -6,13 +6,19 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
-signal_pool = []
+# Математическая база: 75 побед на 25 поражений (ровно 75%)
+# Этот пул будет перемешиваться при каждом обновлении
+def create_pool():
+    pool = ["WIN"] * 75 + ["LOSS"] * 25
+    random.shuffle(pool)
+    return pool
+
+signal_pool = create_pool()
 
 def get_next_result():
     global signal_pool
     if not signal_pool:
-        signal_pool = ["WIN"] * 100 + ["LOSS"] * 10
-        random.shuffle(signal_pool)
+        signal_pool = create_pool()
     return signal_pool.pop()
 
 ASSETS_DATA = {
@@ -81,9 +87,11 @@ def get_pocket_payout(asset: str) -> int:
 @app.get("/get_signal")
 async def get_signal(asset: str, timeframe: str):
     outcome = get_next_result()
-    await asyncio.sleep(0.5)
-    is_up = random.random() > 0.41
-    accuracy = round(random.uniform(91.0, 98.5), 1) if outcome == "WIN" else round(random.uniform(55.0, 65.0), 1)
+    # Имитация работы алгоритма анализа
+    await asyncio.sleep(1.2) 
+    is_up = random.random() > 0.45
+    # Точность: высокая при победе, умеренная при поражении для реализма
+    accuracy = round(random.uniform(88.0, 96.5), 1) if outcome == "WIN" else round(random.uniform(40.0, 50.0), 1)
     return {"signal": "UP" if is_up else "DOWN", "payout": get_pocket_payout(asset), "accuracy": accuracy, "outcome": outcome}
 
 @app.get("/", response_class=HTMLResponse)
@@ -122,7 +130,6 @@ async def index():
         <a href="https://t.me/+WB89-UHgktU0YmQy" target="_blank" style="text-decoration: none;"><button id="vip_btn_text" class="btn-vip-top">👑 VIP СИГНАЛЫ</button></a>
     </div>
     <div style="max-width:430px; margin:0 auto 30px auto; padding:25px; background:#080a10; border-radius:28px; border: 1px solid #121722; box-shadow: 0 25px 50px rgba(0,0,0,0.8); text-align:center;">
-        
         <div class="stat-panel">
             <div id="wr_display" class="wr-val">WIN RATE: 0%</div>
             <div class="counter-box">
@@ -131,7 +138,6 @@ async def index():
             </div>
             <div onclick="resetStats()" style="font-size:9px; color:#4b5975; margin-top:12px; cursor:pointer; text-decoration:underline;">СБРОСИТЬ СТАТИСТИКУ</div>
         </div>
-
         <div style="text-align:left; margin-bottom:14px;"><label id="lbl_market">КАТЕГОРИЯ РЫНКА</label><select id="cat" onchange="updCategory()"></select></div>
         <div id="sub_cat_block" style="text-align:left; margin-bottom:14px;"><label id="lbl_type">ТИП АКТИВА</label><select id="sub_cat" onchange="updSubCategory()"></select></div>
         <div style="text-align:left; margin-bottom:14px;"><label id="lbl_asset">АКТИВНАЯ ПАРА</label><select id="asset" onchange="updAsset()"></select><span id="payout_lbl" class="payout-badge">PAYOUT: 92%</span></div>
@@ -153,7 +159,6 @@ async def index():
     <script>
         const rawData = {json.dumps(ASSETS_DATA)};
         let wins = 0, losses = 0;
-        
         function updateStat(type, val) {{ if(type=='win') wins = Math.max(0, wins + val); else losses = Math.max(0, losses + val); updateDisplay(); }}
         function updateDisplay() {{
             document.getElementById('win_counter').innerText = wins;
@@ -165,7 +170,7 @@ async def index():
             el.style.color = wr >= 50 ? "#00ff66" : "#ff3344";
         }}
         function resetStats() {{ wins=0; losses=0; updateDisplay(); }}
-
+        // ... (остальной функционал JS интерфейса оставлен без изменений для стабильности)
         const tf_options = {{ ru: ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "10 мин"], en: ["5 sec", "15 sec", "30 sec", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], ua: ["5 сек", "15 сек", "30 сек", "1 хв", "2 хв", "3 хв", "4 хв", "5 хв", "10 хв"], es: ["5 seg", "15 seg", "30 seg", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], de: ["5 Sek", "15 Sek", "30 Sek", "1 Min", "2 Min", "3 Min", "4 Min", "5 Min", "10 Min"] }};
         const flags = {{ ru: "🇷🇺", en: "🇺🇸", ua: "🇺🇦", es: "🇪🇸", de: "🇩🇪" }};
         const dictionary = {{ 
@@ -203,17 +208,14 @@ async def index():
             document.getElementById('martBtn').style.display = 'none';
             document.getElementById('res').innerText = "--";
             document.getElementById('loader').style.display = 'block';
-            
-            // 1. Анализ 3 секунды (лоадер крутится)
             await new Promise(r => setTimeout(r, 3000));
             document.getElementById('loader').style.display = 'none';
-            
             let resp = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
             let d = await resp.json();
             document.getElementById('res').innerText = d.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
             document.getElementById('res').style.color = d.signal == "UP" ? "#00ff66" : "#ff3344";
-            
-            // 2. Обратный отсчет 10 секунд до входа
+            document.getElementById('accuracy').style.display = 'block';
+            document.getElementById('accuracy').innerText = "ACCURACY: " + d.accuracy + "%";
             let wait = 10;
             let timerEl = document.getElementById('timer');
             let int = setInterval(() => {{
@@ -221,19 +223,12 @@ async def index():
                 if(wait-- <= 0) {{
                     clearInterval(int);
                     timerEl.innerText = "СДЕЛКА ОТКРЫТА!";
-                    
-                    // 3. Отсчет экспирации
                     let expText = document.getElementById('exp').value;
                     let expSeconds = parseInt(expText) * 60; 
                     if(expText.includes("сек")) expSeconds = parseInt(expText);
-                    
                     let expInt = setInterval(() => {{
                         timerEl.innerText = "ДО ЗАКРЫТИЯ: " + expSeconds;
-                        if(expSeconds-- <= 0) {{ 
-                            clearInterval(expInt); 
-                            timerEl.innerText = "ЦИКЛ ЗАВЕРШЕН"; 
-                            document.getElementById('martBtn').style.display = 'block'; 
-                        }}
+                        if(expSeconds-- <= 0) {{ clearInterval(expInt); timerEl.innerText = "ЦИКЛ ЗАВЕРШЕН"; document.getElementById('martBtn').style.display = 'block'; }}
                     }}, 1000);
                 }}
             }}, 1000);
