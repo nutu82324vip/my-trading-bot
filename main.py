@@ -109,7 +109,6 @@ async def index():
             .btn:active {{ transform: scale(0.98); }}
             .lang-select {{ background: #0f131e; color: white; border: 1px solid #1a2233; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; }}
             .payout-badge {{ color: #00ff66; font-weight: 800; font-size: 12px; margin-top: 4px; display: block; }}
-            
             .stat-panel {{ background: #080a10; border: 1px solid #1a2233; border-radius: 20px; padding: 15px; margin-bottom: 20px; text-align: center; }}
             .wr-val {{ font-size: 22px; font-weight: 900; color: #00ff66; margin-bottom: 10px; text-shadow: 0 0 15px rgba(0,255,102,0.2); }}
             .counter-box {{ display: flex; gap: 10px; }}
@@ -134,11 +133,6 @@ async def index():
             <div onclick="resetStats()" style="font-size:9px; color:#4b5975; margin-top:12px; cursor:pointer; text-decoration:underline;">СБРОСИТЬ СТАТИСТИКУ</div>
         </div>
 
-        <div id="result_buttons" style="display:none; gap:10px; margin-bottom:15px;">
-            <button onclick="finalizeTrade(true)" style="flex:1; padding:12px; border:none; border-radius:10px; background:#00ff66; color:#000; font-weight:900; cursor:pointer;">ПЛЮС (+)</button>
-            <button onclick="finalizeTrade(false)" style="flex:1; padding:12px; border:none; border-radius:10px; background:#ff3344; color:#fff; font-weight:900; cursor:pointer;">МИНУС (-)</button>
-        </div>
-
         <div style="text-align:left; margin-bottom:14px;"><label id="lbl_market">КАТЕГОРИЯ РЫНКА</label><select id="cat" onchange="updCategory()"></select></div>
         <div id="sub_cat_block" style="text-align:left; margin-bottom:14px;"><label id="lbl_type">ТИП АКТИВА</label><select id="sub_cat" onchange="updSubCategory()"></select></div>
         <div style="text-align:left; margin-bottom:14px;"><label id="lbl_asset">АКТИВНАЯ ПАРА</label><select id="asset" onchange="updAsset()"></select><span id="payout_lbl" class="payout-badge">PAYOUT: 92%</span></div>
@@ -154,7 +148,6 @@ async def index():
         <div id="res" style="font-size:55px; font-weight:900; margin:10px 0; min-height:66px; letter-spacing:2px; color:#ffffff;">--</div>
         <div id="accuracy" style="font-size:14px; font-weight:800; color:#a855f7; margin-top:-5px; margin-bottom:10px; display:none;"></div>
         <div id="timer" style="font-size:14px; font-weight:800; color:#ffaa00; margin-bottom:15px; min-height:20px;"></div>
-        <button id="mart" class="btn" onclick="getLiveSignal(true)" style="display:none; background:#ff3344; box-shadow: 0 5px 15px rgba(255,51,68,0.3);">АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ</button>
         <a href="https://t.me/+WB89-UHgktU0YmQy" target="_blank" style="text-decoration: none;"><button id="btn_supp" class="btn btn-support">РАЗРАБОТЧИК / SUPPORT</button></a>
     </div>
     <script>
@@ -172,42 +165,52 @@ async def index():
             el.style.color = wr >= 50 ? "#00ff66" : "#ff3344";
         }}
         function resetStats() {{ wins=0; losses=0; updateDisplay(); }}
-        function finalizeTrade(isWin) {{ adjustStat(isWin ? 'win' : 'loss', 1); document.getElementById('result_buttons').style.display = 'none'; }}
-        function adjustStat(type, val) {{ if(type=='win') wins = Math.max(0, wins + val); else losses = Math.max(0, losses + val); updateDisplay(); }}
 
         const tf_options = {{ ru: ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "10 мин"], en: ["5 sec", "15 sec", "30 sec", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], ua: ["5 сек", "15 сек", "30 сек", "1 хв", "2 хв", "3 хв", "4 хв", "5 хв", "10 хв"], es: ["5 seg", "15 seg", "30 seg", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], de: ["5 Sek", "15 Sek", "30 Sek", "1 Min", "2 Min", "3 Min", "4 Min", "5 Min", "10 Min"] }};
         const flags = {{ ru: "🇷🇺", en: "🇺🇸", ua: "🇺🇦", es: "🇪🇸", de: "🇩🇪" }};
-        const dictionary = {{ ru: {{ title: "AI QUANTUM ENGINE ACTIVE", market: "КАТЕГОРИЯ РЫНКА", type: "ТИП АКТИВА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ", exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", auto: "ИИ СДЕЛАТЬ ЗА ВАС", pocket: "ОТКРЫТЬ POCKET OPTION", support: "РАЗРАБОТЧИК / SUPPORT", ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", load: "[ АНАЛИЗ РЫНОЧНОГО ОРДЕРА... ]", wait: "ВХОД В СДЕЛКУ ЧЕРЕЗ: ", process: "СДЕЛКА В ПРОЦЕССЕ ТОРГОВЛИ: ", end: "ТОРГОВЫЙ ЦИКЛ ЗАВЕРШЕН", ai_search: "[ ИИ ИЩЕТ ЛУЧШУЮ ТОЧКУ ВХОДУ... ]", vip: "👑 VIP СИГНАЛЫ" }}, en: {{ title: "AI QUANTUM ENGINE ACTIVE", market: "MARKET CATEGORY", type: "ASSET TYPE", asset: "ACTIVE PAIR", tf: "CANDLE TIMEFRAME", exp: "EXPIRATION TIME", scan: "SCAN MARKET", auto: "AI DO FOR YOU", pocket: "OPEN POCKET OPTION", support: "DEVELOPER / SUPPORT", ready: "SYSTEM SYNCHRONIZED", load: "[ ANALYZING MARKET ORDER... ]", wait: "ENTER TRADE IN: ", process: "TRADE IN PROCESS: ", end: "TRADE CYCLE COMPLETED", ai_search: "[ AI SEARCHING BEST ENTRY POINT... ]", vip: "👑 VIP SIGNALS" }} }};
+        const dictionary = {{ 
+            ru: {{ title: "AI QUANTUM ENGINE ACTIVE", up: "ВВЕРХ", down: "ВНИЗ", market: "КАТЕГОРИЯ РЫНКА", type: "ТИП АКТИВА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ", exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", auto: "ИИ СДЕЛАТЬ ЗА ВАС", pocket: "ОТКРЫТЬ POCKET OPTION", support: "РАЗРАБОТЧИК / SUPPORT", ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", wait: "ВХОД В СДЕЛКУ ЧЕРЕЗ: ", vip: "👑 VIP СИГНАЛЫ" }}, 
+            en: {{ title: "AI QUANTUM ENGINE ACTIVE", up: "CALL", down: "PUT", market: "MARKET CATEGORY", type: "ASSET TYPE", asset: "ACTIVE PAIR", tf: "CANDLE TIMEFRAME", exp: "EXPIRATION TIME", scan: "SCAN MARKET", auto: "AI DO FOR YOU", pocket: "OPEN POCKET OPTION", support: "DEVELOPER / SUPPORT", ready: "SYSTEM SYNCHRONIZED", wait: "ENTER TRADE IN: ", vip: "👑 VIP SIGNALS" }}
+        }};
 
-        function changeLang() {{ let l = document.getElementById('lang').value, d = dictionary[l] || dictionary['en']; document.getElementById('flag_icon').innerText = flags[l]; document.getElementById('lbl_title').innerText = d.title; document.getElementById('lbl_market').innerText = d.market; document.getElementById('lbl_type').innerText = d.type; document.getElementById('lbl_asset').innerText = d.asset; document.getElementById('lbl_tf').innerText = d.tf; document.getElementById('lbl_exp').innerText = d.exp; document.getElementById('runBtn').innerText = d.scan; document.getElementById('autoBtn').innerText = d.auto; document.getElementById('btn_pocket').innerText = d.pocket; document.getElementById('btn_supp').innerText = d.support; document.getElementById('status').innerText = d.ready; document.getElementById('vip_btn_text').innerText = d.vip; let catSelect = document.getElementById('cat'); catSelect.innerHTML = ""; Object.keys(rawData[l]).forEach(c => {{ catSelect.innerHTML += `<option>${{c}}</option>`; }}); updCategory(); }}
+        function changeLang() {{ 
+            let l = document.getElementById('lang').value;
+            let d = dictionary[l] || dictionary['en'];
+            document.getElementById('flag_icon').innerText = flags[l];
+            document.getElementById('lbl_market').innerText = d.market; 
+            document.getElementById('lbl_type').innerText = d.type; 
+            document.getElementById('lbl_asset').innerText = d.asset; 
+            document.getElementById('lbl_tf').innerText = d.tf; 
+            document.getElementById('lbl_exp').innerText = d.exp; 
+            document.getElementById('runBtn').innerText = d.scan; 
+            document.getElementById('autoBtn').innerText = d.auto; 
+            document.getElementById('btn_pocket').innerText = d.pocket; 
+            document.getElementById('btn_supp').innerText = d.support; 
+            document.getElementById('status').innerText = d.ready; 
+            document.getElementById('vip_btn_text').innerText = d.vip; 
+            let catSelect = document.getElementById('cat'); 
+            catSelect.innerHTML = ""; 
+            Object.keys(rawData[l]).forEach(c => {{ catSelect.innerHTML += `<option>${{c}}</option>`; }}); 
+            updCategory(); 
+        }}
         function calcLocalPayout(assetName) {{ return assetName.includes("OTC") ? 92 : 82; }}
         function updCategory(){{ let l = document.getElementById('lang').value, c = document.getElementById('cat').value, types = Object.keys(rawData[l][c]); document.getElementById('sub_cat').innerHTML = types.map(t => `<option>${{t}}</option>`).join(''); updSubCategory(); }}
         function updSubCategory() {{ let l = document.getElementById('lang').value, c = document.getElementById('cat').value, t = document.getElementById('sub_cat').value, assets = rawData[l][c][t] || []; document.getElementById('asset').innerHTML = assets.map(a => `<option>${{a}}</option>`).join(''); updAsset(); }}
         function updAsset() {{ let l = document.getElementById('lang').value, asset = document.getElementById('asset').value; document.getElementById('payout_lbl').innerText = `PAYOUT: ${{calcLocalPayout(asset)}}%`; let tfSelect = document.getElementById('time'); tfSelect.innerHTML = tf_options[l].map(o => `<option>${{o}}</option>`).join(''); let expSelect = document.getElementById('exp'); expSelect.innerHTML = (asset.includes("OTC") ? tf_options[l] : tf_options[l].slice(3)).map(o => `<option>${{o}}</option>`).join(''); }}
         
-        async function getLiveSignal(isMartingale, isAiAuto = false) {{
+        async function getLiveSignal() {{
             if(mainInterval) clearInterval(mainInterval);
             let l = document.getElementById('lang').value, d = dictionary[l] || dictionary['en'];
-            document.getElementById('result_buttons').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
             document.getElementById('res').style.display = 'none';
-            
             let response = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
             let result = await response.json();
-            
-            await new Promise(r => setTimeout(r, 2000));
             document.getElementById('loader').style.display = 'none';
             document.getElementById('res').style.display = 'block';
-            document.getElementById('res').innerText = d[result.signal] || result.signal;
+            document.getElementById('res').innerText = d[result.signal.toLowerCase()];
             document.getElementById('res').style.color = result.signal === "UP" ? "#00ff66" : "#ff3344";
             document.getElementById('accuracy').innerText = `🎯 ACCURACY: ${{result.accuracy}}%`;
             document.getElementById('accuracy').style.display = 'block';
-
-            let entryTime = 10;
-            mainInterval = setInterval(() => {{
-                if (entryTime > 0) {{ entryTime--; document.getElementById('timer').innerText = d.wait + entryTime + " SEC"; }}
-                else {{ clearInterval(mainInterval); document.getElementById('timer').innerText = "ОЖИДАНИЕ РЕЗУЛЬТАТА..."; document.getElementById('result_buttons').style.display = 'flex'; }}
-            }}, 1000);
         }}
         changeLang();
     </script>
