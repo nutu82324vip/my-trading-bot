@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
-# Глобальный пул для контроля статистики
+# Глобальный пул для контроля статистики (100 побед, 10 поражений)
 signal_pool = []
 
 def get_next_result():
@@ -212,6 +212,7 @@ async def index():
             document.getElementById('accuracy').innerText = `🎯 ACCURACY: ${{result.accuracy}}%`;
             document.getElementById('accuracy').style.display = 'block';
         }}
+        function aiDoForYou() {{ getLiveSignal(); }}
         changeLang();
     </script>
     </html>
