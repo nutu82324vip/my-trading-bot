@@ -6,7 +6,6 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
-# Глобальный пул для контроля статистики
 signal_pool = []
 
 def get_next_result():
@@ -203,22 +202,38 @@ async def index():
             if(isAI) {{ document.getElementById('cat').selectedIndex = Math.floor(Math.random()*Object.keys(rawData.ru).length); updCategory(); }}
             document.getElementById('martBtn').style.display = 'none';
             document.getElementById('res').innerText = "--";
+            document.getElementById('loader').style.display = 'block';
             
-            let wait = 3; 
+            // 1. Анализ 3 секунды (лоадер крутится)
+            await new Promise(r => setTimeout(r, 3000));
+            document.getElementById('loader').style.display = 'none';
+            
+            let resp = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
+            let d = await resp.json();
+            document.getElementById('res').innerText = d.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
+            document.getElementById('res').style.color = d.signal == "UP" ? "#00ff66" : "#ff3344";
+            
+            // 2. Обратный отсчет 10 секунд до входа
+            let wait = 10;
             let timerEl = document.getElementById('timer');
-            let int = setInterval(async () => {{
-                timerEl.innerText = "АНАЛИЗ РЫНКА: " + wait;
+            let int = setInterval(() => {{
+                timerEl.innerText = "ВХОД ЧЕРЕЗ: " + wait;
                 if(wait-- <= 0) {{
                     clearInterval(int);
-                    let resp = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
-                    let d = await resp.json();
-                    document.getElementById('res').innerText = d.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
-                    document.getElementById('res').style.color = d.signal == "UP" ? "#00ff66" : "#ff3344";
+                    timerEl.innerText = "СДЕЛКА ОТКРЫТА!";
                     
-                    let exp = 60;
+                    // 3. Отсчет экспирации
+                    let expText = document.getElementById('exp').value;
+                    let expSeconds = parseInt(expText) * 60; 
+                    if(expText.includes("сек")) expSeconds = parseInt(expText);
+                    
                     let expInt = setInterval(() => {{
-                        timerEl.innerText = "ДО ЗАКРЫТИЯ СДЕЛКИ: " + exp;
-                        if(exp-- <= 0) {{ clearInterval(expInt); timerEl.innerText = "ЦИКЛ ЗАВЕРШЕН"; document.getElementById('martBtn').style.display = 'block'; }}
+                        timerEl.innerText = "ДО ЗАКРЫТИЯ: " + expSeconds;
+                        if(expSeconds-- <= 0) {{ 
+                            clearInterval(expInt); 
+                            timerEl.innerText = "ЦИКЛ ЗАВЕРШЕН"; 
+                            document.getElementById('martBtn').style.display = 'block'; 
+                        }}
                     }}, 1000);
                 }}
             }}, 1000);
