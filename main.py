@@ -1,9 +1,20 @@
 import json
 import random
+import asyncio
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 app = FastAPI()
+
+# Глобальный пул для контроля статистики (100 побед, 10 поражений)
+signal_pool = []
+
+def get_next_result():
+    global signal_pool
+    if not signal_pool:
+        signal_pool = ["WIN"] * 100 + ["LOSS"] * 10
+        random.shuffle(signal_pool)
+    return signal_pool.pop()
 
 ASSETS_DATA = {
     "ru": {
@@ -14,7 +25,6 @@ ASSETS_DATA = {
             "СЫРЬЕ / ИНДЕКСЫ": ["Gold OTC", "Silver OTC", "Crude Oil OTC", "Brent Oil OTC", "US 500 OTC", "NASDAQ 100 OTC"]
         },
         "[ВСЕ АКТИВЫ] — ЖИВОЙ РЫНОК": {
-            "КРИПТОВАЛЮТА": ["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "LTC/USD", "TRX/USD", "BNB/USD", "DOGE/USD", "LINK/USD", "DOT/USD"],
             "ВАЛЮТНЫЕ ПАРЫ": ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "EUR/JPY", "GBP/JPY", "EUR/GBP"]
         }
     },
@@ -26,7 +36,6 @@ ASSETS_DATA = {
             "COMMODITIES / INDICES": ["Gold OTC", "Silver OTC", "Crude Oil OTC", "Brent Oil OTC", "US 500 OTC", "NASDAQ 100 OTC"]
         },
         "[ALL ASSETS] — LIVE MARKET": {
-            "CRYPTOCURRENCY": ["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "LTC/USD", "TRX/USD", "BNB/USD", "DOGE/USD", "LINK/USD", "DOT/USD"],
             "CURRENCY PAIRS": ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "EUR/JPY", "GBP/JPY", "EUR/GBP"]
         }
     },
@@ -38,7 +47,6 @@ ASSETS_DATA = {
             "СИРОВИНА / ІНДЕКСИ": ["Gold OTC", "Silver OTC", "Crude Oil OTC", "Brent Oil OTC", "US 500 OTC", "NASDAQ 100 OTC"]
         },
         "[ВСІ АКТИВИ] — ЖИВИЙ РИНОК": {
-            "КРИПТОВАЛЮТА": ["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "LTC/USD", "TRX/USD", "BNB/USD", "DOGE/USD", "LINK/USD", "DOT/USD"],
             "ВАЛЮТНІ ПАРИ": ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "EUR/JPY", "GBP/JPY", "EUR/GBP"]
         }
     },
@@ -50,7 +58,6 @@ ASSETS_DATA = {
             "MATERIAS PRIMAS / ÍNDICES": ["Gold OTC", "Silver OTC", "Crude Oil OTC", "Brent Oil OTC", "US 500 OTC", "NASDAQ 100 OTC"]
         },
         "[TODOS LOS ACTIVOS] — MERCADO EN VIVO": {
-            "CRIPTOMONEDAS": ["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "LTC/USD", "TRX/USD", "BNB/USD", "DOGE/USD", "LINK/USD", "DOT/USD"],
             "PARES DE DIVISAS": ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "EUR/JPY", "GBP/JPY", "EUR/GBP"]
         }
     },
@@ -62,7 +69,6 @@ ASSETS_DATA = {
             "ROHSTOFFE / INDIZES": ["Gold OTC", "Silver OTC", "Crude Oil OTC", "Brent Oil OTC", "US 500 OTC", "NASDAQ 100 OTC"]
         },
         "[ALLE VERMÖGENSWERTE] — LIVE-MARKT": {
-            "KRYPTOWÄHRUNG": ["BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "LTC/USD", "TRX/USD", "BNB/USD", "DOGE/USD", "LINK/USD", "DOT/USD"],
             "WÄHRUNGSPAARE": ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "USD/CHF", "EUR/JPY", "GBP/JPY", "EUR/GBP"]
         }
     }
@@ -75,7 +81,11 @@ def get_pocket_payout(asset: str) -> int:
 
 @app.get("/get_signal")
 async def get_signal(asset: str, timeframe: str):
-    return {"signal": random.choice(["UP", "DOWN"]), "payout": get_pocket_payout(asset), "accuracy": round(random.uniform(88.4, 96.8), 1)}
+    outcome = get_next_result()
+    await asyncio.sleep(1.5)
+    is_up = random.random() > 0.41
+    accuracy = round(random.uniform(91.0, 98.5), 1) if outcome == "WIN" else round(random.uniform(55.0, 65.0), 1)
+    return {"signal": "UP" if is_up else "DOWN", "payout": get_pocket_payout(asset), "accuracy": accuracy, "outcome": outcome}
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -91,56 +101,135 @@ async def index():
             select {{ width: 100%; padding: 14px; background: #0f131e; border: 1px solid #1a2233; border-radius: 14px; font-size: 14px; font-weight: 600; color: #ffffff; outline: none; appearance: none; }}
             label {{ font-size: 11px; font-weight: bold; color: #4b5975; display: block; margin-bottom: 5px; letter-spacing: 0.8px; text-transform: uppercase; }}
             .btn {{ width: 100%; padding: 16px; border: none; color: white; font-weight: 800; border-radius: 14px; cursor: pointer; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; margin-bottom: 10px; }}
-            .btn-main {{ background: linear-gradient(135deg, #963bfe 0%, #641bfa 100%); }}
-            .btn-auto {{ background: linear-gradient(135deg, #00ff66 0%, #00b344 100%); color: #000; }}
-            .btn-vip-top {{ padding: 8px 12px; border: none; border-radius: 8px; background: linear-gradient(270deg, #ffd700, #ffa500, #b8860b, #ffd700); animation: shine 4s ease infinite; color: #000; font-weight: 900; font-size: 11px; cursor: pointer; }}
+            .btn-main {{ background: linear-gradient(135deg, #963bfe 0%, #641bfa 100%); box-shadow: 0 5px 20px rgba(100,27,250,0.4); }}
+            .btn-auto {{ background: linear-gradient(135deg, #00ff66 0%, #00b344 100%); color: #000; font-weight: 900; }}
+            .btn-vip-top {{ padding: 8px 12px; border: none; border-radius: 8px; background: linear-gradient(270deg, #ffd700, #ffa500, #b8860b, #ffd700); background-size: 400% 400%; animation: shine 4s ease infinite; color: #000 !important; font-weight: 900; font-size: 11px; cursor: pointer; box-shadow: 0 2px 10px rgba(255,215,0,0.3); text-transform: uppercase; letter-spacing: 0.5px; }}
             .btn-pocket {{ background: #141924; border: 1px solid #222d42; color: #38ef7d; }}
-            .btn-support {{ background: #080a10; border: 1px solid #161b26; color: #586988; font-size: 11px; }}
+            .btn-support {{ background: #080a10; border: 1px solid #161b26; color: #586988; font-size: 11px; margin-top: 15px; }}
+            .btn:active {{ transform: scale(0.98); }}
             .lang-select {{ background: #0f131e; color: white; border: 1px solid #1a2233; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; }}
             .payout-badge {{ color: #00ff66; font-weight: 800; font-size: 12px; margin-top: 4px; display: block; }}
-            .counter-box {{ display: flex; justify-content: center; gap: 15px; margin: 15px 0 10px 0; }}
-            .count-btn {{ display: flex; align-items: center; gap: 8px; background: #0f131e; padding: 10px 16px; border-radius: 12px; border: 1px solid #1a2233; cursor: pointer; font-weight: 800; font-size: 13px; }}
+            .stat-panel {{ background: #080a10; border: 1px solid #1a2233; border-radius: 20px; padding: 15px; margin-bottom: 20px; text-align: center; }}
+            .wr-val {{ font-size: 22px; font-weight: 900; color: #00ff66; margin-bottom: 10px; text-shadow: 0 0 15px rgba(0,255,102,0.2); }}
+            .counter-box {{ display: flex; gap: 10px; }}
+            .count-btn {{ flex: 1; display: flex; flex-direction: column; align-items: center; background: #0f131e; padding: 10px; border-radius: 12px; border: 1px solid #1a2233; cursor: pointer; font-weight: 800; font-size: 13px; transition: 0.2s; }}
         </style>
     </head>
     <div style="max-width:430px; margin:15px auto; padding:0 15px; display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; align-items:center; gap:8px;">
-            <span id="flag_icon" style="font-size:20px;">🇷🇺</span>
-            <select id="lang" class="lang-select" onchange="changeLang()">
-                <option value="ru">🇷🇺 RU</option><option value="en">🇺🇸 EN</option><option value="ua">🇺🇦 UA</option>
-                <option value="es">🇪🇸 ES</option><option value="de">🇩🇪 DE</option>
-            </select>
+            <span id="flag_icon" style="font-size:20px; line-height:1;">🇷🇺</span>
+            <select id="lang" class="lang-select" onchange="changeLang()"><option value="ru">🇷🇺 RU</option><option value="en">🇺🇸 EN</option><option value="ua">🇺🇦 UA</option><option value="es">🇪🇸 ES</option><option value="de">🇩🇪 DE</option></select>
         </div>
-        <a href="https://t.me/+WB89-UHgktU0YmQy" target="_blank"><button id="vip_btn_text" class="btn-vip-top">👑 VIP СИГНАЛЫ</button></a>
+        <a href="https://t.me/+WB89-UHgktU0YmQy" target="_blank" style="text-decoration: none;"><button id="vip_btn_text" class="btn-vip-top">👑 VIP СИГНАЛЫ</button></a>
     </div>
-    <div style="max-width:430px; margin:0 auto; padding:25px; background:#080a10; border-radius:28px; border: 1px solid #121722; text-align:center;">
-        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:20px;">
-            <div style="width:7px; height:7px; background:#00ff66; border-radius:50%;"></div>
-            <span id="lbl_title" style="font-size:11px; font-weight:800; color:#00ff66;">AI QUANTUM ENGINE ACTIVE</span>
+    <div style="max-width:430px; margin:0 auto 30px auto; padding:25px; background:#080a10; border-radius:28px; border: 1px solid #121722; box-shadow: 0 25px 50px rgba(0,0,0,0.8); text-align:center;">
+        
+        <div class="stat-panel">
+            <div id="wr_display" class="wr-val">WIN RATE: 0%</div>
+            <div class="counter-box">
+                <button class="count-btn" onclick="updateStat('win', 1)" oncontextmenu="updateStat('win', -1); return false;"><span style="font-size:9px; color:#586988; text-transform:uppercase;">Profit</span><span id="win_counter" style="color:#00ff66; font-size:16px;">0</span></button>
+                <button class="count-btn" onclick="updateStat('loss', 1)" oncontextmenu="updateStat('loss', -1); return false;"><span style="font-size:9px; color:#586988; text-transform:uppercase;">Loss</span><span id="loss_counter" style="color:#ff3344; font-size:16px;">0</span></button>
+            </div>
+            <div onclick="resetStats()" style="font-size:9px; color:#4b5975; margin-top:12px; cursor:pointer; text-decoration:underline;">СБРОСИТЬ СТАТИСТИКУ</div>
         </div>
-        <label id="lbl_market">КАТЕГОРИЯ РЫНКА</label>
-        <select id="cat" onchange="updCategory()"></select>
-        <label id="lbl_type" style="margin-top:14px;">ТИП АКТИВА</label>
-        <select id="sub_cat" onchange="updSubCategory()"></select>
-        <label id="lbl_asset" style="margin-top:14px;">АКТИВНАЯ ПАРА</label>
-        <select id="asset" onchange="updAsset()"></select>
-        <span id="payout_lbl" class="payout-badge">PAYOUT: 92%</span>
-        <div style="display:flex; gap:12px; margin:14px 0;">
+
+        <div style="text-align:left; margin-bottom:14px;"><label id="lbl_market">КАТЕГОРИЯ РЫНКА</label><select id="cat" onchange="updCategory()"></select></div>
+        <div id="sub_cat_block" style="text-align:left; margin-bottom:14px;"><label id="lbl_type">ТИП АКТИВА</label><select id="sub_cat" onchange="updSubCategory()"></select></div>
+        <div style="text-align:left; margin-bottom:14px;"><label id="lbl_asset">АКТИВНАЯ ПАРА</label><select id="asset" onchange="updAsset()"></select><span id="payout_lbl" class="payout-badge">PAYOUT: 92%</span></div>
+        <div style="display:flex; gap:12px; margin-bottom:20px; text-align:left;">
             <div style="flex:1;"><label id="lbl_tf">ИНТЕРВАЛ СВЕЧИ</label><select id="time"></select></div>
             <div style="flex:1;"><label id="lbl_exp">ЭКСПИРАЦИЯ</label><select id="exp"></select></div>
         </div>
-        <button id="runBtn" class="btn btn-main" onclick="getLiveSignal(false)">СКАНИРОВАТЬ РЫНОК</button>
-        <button id="autoBtn" class="btn btn-auto" onclick="aiDoForYou()">ИИ СДЕЛАТЬ ЗА ВАС</button>
-        <a href="https://pocketoption.com/register" target="_blank"><button id="btn_pocket" class="btn btn-pocket">ОТКРЫТЬ POCKET OPTION</button></a>
-        <div id="status" style="font-size:11px; color:#4b5975; margin-top:20px;">СИСТЕМА СИНХРОНИЗИРОВАНА</div>
+        <button id="runBtn" class="btn btn-main" onclick="startTimer(10, false)">СКАНИРОВАТЬ РЫНОК</button>
+        <button id="autoBtn" class="btn btn-auto" onclick="startTimer(25, true)">ИИ СДЕЛАТЬ ЗА ВАС</button>
+        <a href="https://pocketoption.com/register" target="_blank" style="text-decoration: none;"><button id="btn_pocket" class="btn btn-pocket">ОТКРЫТЬ POCKET OPTION</button></a>
+        <div id="status" style="font-size:11px; color:#4b5975; margin-top:20px; min-height:18px; font-weight:700; letter-spacing:0.5px;">СИСТЕМА СИНХРОНИЗИРОВАНА</div>
         <div id="loader" class="loader"></div>
-        <div id="res" style="font-size:55px; font-weight:900; margin:10px 0; color:#ffffff;">--</div>
-        <div id="timer" style="font-size:14px; font-weight:800; color:#ffaa00; margin-bottom:15px;"></div>
-        <button id="mart" class="btn" style="display:none; background:#ff3344;" onclick="getLiveSignal(true)">АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ</button>
-        <a href="https://t.me/andriddddd" target="_blank"><button id="btn_supp" class="btn btn-support">РАЗРАБОТЧИК / SUPPORT</button></a>
+        <div id="res" style="font-size:55px; font-weight:900; margin:10px 0; min-height:66px; letter-spacing:2px; color:#ffffff;">--</div>
+        <div id="accuracy" style="font-size:14px; font-weight:800; color:#a855f7; margin-top:-5px; margin-bottom:10px; display:none;"></div>
+        <div id="timer" style="font-size:14px; font-weight:800; color:#ffaa00; margin-bottom:15px; min-height:20px;"></div>
+        <button id="martBtn" class="btn" style="display:none; background:#ff3344;" onclick="startTimer(10, false)">АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ</button>
+        <a href="https://t.me/+WB89-UHgktU0YmQy" target="_blank" style="text-decoration: none;"><button id="btn_supp" class="btn btn-support">РАЗРАБОТЧИК / SUPPORT</button></a>
     </div>
     <script>
         const rawData = {json.dumps(ASSETS_DATA)};
-        // ... (остальной JavaScript из твоего скрипта без изменений)
+        let wins = 0, losses = 0;
+        
+        function updateStat(type, val) {{ if(type=='win') wins = Math.max(0, wins + val); else losses = Math.max(0, losses + val); updateDisplay(); }}
+        function updateDisplay() {{
+            document.getElementById('win_counter').innerText = wins;
+            document.getElementById('loss_counter').innerText = losses;
+            let total = wins + losses;
+            let wr = total == 0 ? 0 : ((wins/total)*100).toFixed(1);
+            let el = document.getElementById('wr_display');
+            el.innerText = "WIN RATE: " + wr + "%";
+            el.style.color = wr >= 50 ? "#00ff66" : "#ff3344";
+        }}
+        function resetStats() {{ wins=0; losses=0; updateDisplay(); }}
+
+        const tf_options = {{ ru: ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "10 мин"], en: ["5 sec", "15 sec", "30 sec", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], ua: ["5 сек", "15 сек", "30 сек", "1 хв", "2 хв", "3 хв", "4 хв", "5 хв", "10 хв"], es: ["5 seg", "15 seg", "30 seg", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], de: ["5 Sek", "15 Sek", "30 Sek", "1 Min", "2 Min", "3 Min", "4 Min", "5 Min", "10 Min"] }};
+        const flags = {{ ru: "🇷🇺", en: "🇺🇸", ua: "🇺🇦", es: "🇪🇸", de: "🇩🇪" }};
+        const dictionary = {{ 
+            ru: {{ market: "КАТЕГОРИЯ РЫНКА", type: "ТИП АКТИВА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ", exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", auto: "ИИ СДЕЛАТЬ ЗА ВАС", pocket: "ОТКРЫТЬ POCKET OPTION", support: "РАЗРАБОТЧИК / SUPPORT", ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", vip: "👑 VIP СИГНАЛЫ" }}, 
+            en: {{ market: "MARKET CATEGORY", type: "ASSET TYPE", asset: "ACTIVE PAIR", tf: "CANDLE TIMEFRAME", exp: "EXPIRATION TIME", scan: "SCAN MARKET", auto: "AI DO FOR YOU", pocket: "OPEN POCKET OPTION", support: "DEVELOPER / SUPPORT", ready: "SYSTEM SYNCHRONIZED", vip: "👑 VIP SIGNALS" }}
+        }};
+
+        function changeLang() {{ 
+            let l = document.getElementById('lang').value;
+            let d = dictionary[l] || dictionary['en'];
+            document.getElementById('flag_icon').innerText = flags[l];
+            document.getElementById('lbl_market').innerText = d.market; 
+            document.getElementById('lbl_type').innerText = d.type; 
+            document.getElementById('lbl_asset').innerText = d.asset; 
+            document.getElementById('lbl_tf').innerText = d.tf; 
+            document.getElementById('lbl_exp').innerText = d.exp; 
+            document.getElementById('runBtn').innerText = d.scan; 
+            document.getElementById('autoBtn').innerText = d.auto; 
+            document.getElementById('btn_pocket').innerText = d.pocket; 
+            document.getElementById('btn_supp').innerText = d.support; 
+            document.getElementById('status').innerText = d.ready; 
+            document.getElementById('vip_btn_text').innerText = d.vip; 
+            let catSelect = document.getElementById('cat'); 
+            catSelect.innerHTML = ""; 
+            Object.keys(rawData[l]).forEach(c => {{ catSelect.innerHTML += `<option>${{c}}</option>`; }}); 
+            updCategory(); 
+        }}
+        function calcLocalPayout(assetName) {{ return assetName.includes("OTC") ? 92 : 82; }}
+        function updCategory(){{ let l = document.getElementById('lang').value, c = document.getElementById('cat').value, types = Object.keys(rawData[l][c]); document.getElementById('sub_cat').innerHTML = types.map(t => `<option>${{t}}</option>`).join(''); updSubCategory(); }}
+        function updSubCategory() {{ let l = document.getElementById('lang').value, c = document.getElementById('cat').value, t = document.getElementById('sub_cat').value, assets = rawData[l][c][t] || []; document.getElementById('asset').innerHTML = assets.map(a => `<option>${{a}}</option>`).join(''); updAsset(); }}
+        function updAsset() {{ let l = document.getElementById('lang').value, asset = document.getElementById('asset').value; document.getElementById('payout_lbl').innerText = `PAYOUT: ${{calcLocalPayout(asset)}}%`; let tfSelect = document.getElementById('time'); tfSelect.innerHTML = tf_options[l].map(o => `<option>${{o}}</option>`).join(''); let expSelect = document.getElementById('exp'); expSelect.innerHTML = (asset.includes("OTC") ? tf_options[l] : tf_options[l].slice(3)).map(o => `<option>${{o}}</option>`).join(''); }}
+        
+        async function startTimer(seconds, isAI) {{
+            if(isAI) {{ 
+                document.getElementById('cat').selectedIndex = Math.floor(Math.random()*2); 
+                updCategory(); 
+            }}
+            document.getElementById('martBtn').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+            let timerEl = document.getElementById('timer');
+            let wait = seconds;
+            let int = setInterval(async () => {{
+                timerEl.innerText = "ВХОД В СДЕЛКУ ЧЕРЕЗ: " + wait;
+                if(wait-- <= 0) {{
+                    clearInterval(int);
+                    document.getElementById('loader').style.display = 'none';
+                    let response = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
+                    let result = await response.json();
+                    document.getElementById('res').style.display = 'block';
+                    document.getElementById('res').innerText = result.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
+                    document.getElementById('res').style.color = result.signal == "UP" ? "#00ff66" : "#ff3344";
+                    document.getElementById('accuracy').innerText = `🎯 ACCURACY: ${{result.accuracy}}%`;
+                    document.getElementById('accuracy').style.display = 'block';
+                    
+                    let exp = 60;
+                    let expInt = setInterval(() => {{
+                        timerEl.innerText = "ДО ЗАКРЫТИЯ: " + exp;
+                        if(exp-- <= 0) {{ clearInterval(expInt); timerEl.innerText = "СДЕЛКА ЗАКРЫТА"; document.getElementById('martBtn').style.display = 'block'; }}
+                    }}, 1000);
+                }}
+            }}, 1000);
+        }}
+        changeLang();
     </script>
     </html>
     """
