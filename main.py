@@ -6,8 +6,6 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
-# Математическая база: 75 побед на 25 поражений (ровно 75%)
-# Этот пул будет перемешиваться при каждом обновлении
 def create_pool():
     pool = ["WIN"] * 75 + ["LOSS"] * 25
     random.shuffle(pool)
@@ -87,10 +85,8 @@ def get_pocket_payout(asset: str) -> int:
 @app.get("/get_signal")
 async def get_signal(asset: str, timeframe: str):
     outcome = get_next_result()
-    # Имитация работы алгоритма анализа
     await asyncio.sleep(1.2) 
     is_up = random.random() > 0.45
-    # Точность: высокая при победе, умеренная при поражении для реализма
     accuracy = round(random.uniform(88.0, 96.5), 1) if outcome == "WIN" else round(random.uniform(40.0, 50.0), 1)
     return {"signal": "UP" if is_up else "DOWN", "payout": get_pocket_payout(asset), "accuracy": accuracy, "outcome": outcome}
 
@@ -158,6 +154,8 @@ async def index():
     </div>
     <script>
         const rawData = {json.dumps(ASSETS_DATA)};
+        const all_time_options = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"];
+        
         let wins = 0, losses = 0;
         function updateStat(type, val) {{ if(type=='win') wins = Math.max(0, wins + val); else losses = Math.max(0, losses + val); updateDisplay(); }}
         function updateDisplay() {{
@@ -170,8 +168,7 @@ async def index():
             el.style.color = wr >= 50 ? "#00ff66" : "#ff3344";
         }}
         function resetStats() {{ wins=0; losses=0; updateDisplay(); }}
-        // ... (остальной функционал JS интерфейса оставлен без изменений для стабильности)
-        const tf_options = {{ ru: ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "10 мин"], en: ["5 sec", "15 sec", "30 sec", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], ua: ["5 сек", "15 сек", "30 сек", "1 хв", "2 хв", "3 хв", "4 хв", "5 хв", "10 хв"], es: ["5 seg", "15 seg", "30 seg", "1 min", "2 min", "3 min", "4 min", "5 min", "10 min"], de: ["5 Sek", "15 Sek", "30 Sek", "1 Min", "2 Min", "3 Min", "4 Min", "5 Min", "10 Min"] }};
+
         const flags = {{ ru: "🇷🇺", en: "🇺🇸", ua: "🇺🇦", es: "🇪🇸", de: "🇩🇪" }};
         const dictionary = {{ 
             ru: {{ market: "КАТЕГОРИЯ РЫНКА", type: "ТИП АКТИВА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ", exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", auto: "ИИ СДЕЛАТЬ ЗА ВАС", pocket: "ОТКРЫТЬ POCKET OPTION", support: "РАЗРАБОТЧИК / SUPPORT", ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", vip: "👑 VIP СИГНАЛЫ" }}, 
@@ -201,7 +198,12 @@ async def index():
         function calcLocalPayout(assetName) {{ return assetName.includes("OTC") ? 92 : 82; }}
         function updCategory(){{ let l = document.getElementById('lang').value, c = document.getElementById('cat').value, types = Object.keys(rawData[l][c]); document.getElementById('sub_cat').innerHTML = types.map(t => `<option>${{t}}</option>`).join(''); updSubCategory(); }}
         function updSubCategory() {{ let l = document.getElementById('lang').value, c = document.getElementById('cat').value, t = document.getElementById('sub_cat').value, assets = rawData[l][c][t] || []; document.getElementById('asset').innerHTML = assets.map(a => `<option>${{a}}</option>`).join(''); updAsset(); }}
-        function updAsset() {{ let l = document.getElementById('lang').value, asset = document.getElementById('asset').value; document.getElementById('payout_lbl').innerText = `PAYOUT: ${{calcLocalPayout(asset)}}%`; let tfSelect = document.getElementById('time'); tfSelect.innerHTML = tf_options[l].map(o => `<option>${{o}}</option>`).join(''); let expSelect = document.getElementById('exp'); expSelect.innerHTML = (asset.includes("OTC") ? tf_options[l] : tf_options[l].slice(3)).map(o => `<option>${{o}}</option>`).join(''); }}
+        function updAsset() {{ 
+            let asset = document.getElementById('asset').value; 
+            document.getElementById('payout_lbl').innerText = `PAYOUT: ${{calcLocalPayout(asset)}}%`; 
+            document.getElementById('time').innerHTML = all_time_options.map(o => `<option>${{o}}</option>`).join(''); 
+            document.getElementById('exp').innerHTML = all_time_options.map(o => `<option>${{o}}</option>`).join(''); 
+        }}
         
         async function startFlow(isAI) {{
             if(isAI) {{ document.getElementById('cat').selectedIndex = Math.floor(Math.random()*Object.keys(rawData.ru).length); updCategory(); }}
@@ -216,6 +218,10 @@ async def index():
             document.getElementById('res').style.color = d.signal == "UP" ? "#00ff66" : "#ff3344";
             document.getElementById('accuracy').style.display = 'block';
             document.getElementById('accuracy').innerText = "ACCURACY: " + d.accuracy + "%";
+            
+            let expVal = document.getElementById('exp').value;
+            let expSeconds = expVal.includes("сек") ? parseInt(expVal) : parseInt(expVal) * 60;
+            
             let wait = 10;
             let timerEl = document.getElementById('timer');
             let int = setInterval(() => {{
@@ -223,9 +229,6 @@ async def index():
                 if(wait-- <= 0) {{
                     clearInterval(int);
                     timerEl.innerText = "СДЕЛКА ОТКРЫТА!";
-                    let expText = document.getElementById('exp').value;
-                    let expSeconds = parseInt(expText) * 60; 
-                    if(expText.includes("сек")) expSeconds = parseInt(expText);
                     let expInt = setInterval(() => {{
                         timerEl.innerText = "ДО ЗАКРЫТИЯ: " + expSeconds;
                         if(expSeconds-- <= 0) {{ clearInterval(expInt); timerEl.innerText = "ЦИКЛ ЗАВЕРШЕН"; document.getElementById('martBtn').style.display = 'block'; }}
