@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
-# Глобальный пул для контроля статистики (100 побед, 10 поражений)
+# Глобальный пул для контроля статистики
 signal_pool = []
 
 def get_next_result():
@@ -82,7 +82,7 @@ def get_pocket_payout(asset: str) -> int:
 @app.get("/get_signal")
 async def get_signal(asset: str, timeframe: str):
     outcome = get_next_result()
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(0.5)
     is_up = random.random() > 0.41
     accuracy = round(random.uniform(91.0, 98.5), 1) if outcome == "WIN" else round(random.uniform(55.0, 65.0), 1)
     return {"signal": "UP" if is_up else "DOWN", "payout": get_pocket_payout(asset), "accuracy": accuracy, "outcome": outcome}
@@ -140,16 +140,16 @@ async def index():
             <div style="flex:1;"><label id="lbl_tf">ИНТЕРВАЛ СВЕЧИ</label><select id="time"></select></div>
             <div style="flex:1;"><label id="lbl_exp">ЭКСПИРАЦИЯ</label><select id="exp"></select></div>
         </div>
-        <button id="runBtn" class="btn btn-main" onclick="startTimer(10, false)">СКАНИРОВАТЬ РЫНОК</button>
-        <button id="autoBtn" class="btn btn-auto" onclick="startTimer(25, true)">ИИ СДЕЛАТЬ ЗА ВАС</button>
+        <button id="runBtn" class="btn btn-main" onclick="startFlow(false)">СКАНИРОВАТЬ РЫНОК</button>
+        <button id="autoBtn" class="btn btn-auto" onclick="startFlow(true)">ИИ СДЕЛАТЬ ЗА ВАС</button>
         <a href="https://pocketoption.com/register" target="_blank" style="text-decoration: none;"><button id="btn_pocket" class="btn btn-pocket">ОТКРЫТЬ POCKET OPTION</button></a>
         <div id="status" style="font-size:11px; color:#4b5975; margin-top:20px; min-height:18px; font-weight:700; letter-spacing:0.5px;">СИСТЕМА СИНХРОНИЗИРОВАНА</div>
         <div id="loader" class="loader"></div>
         <div id="res" style="font-size:55px; font-weight:900; margin:10px 0; min-height:66px; letter-spacing:2px; color:#ffffff;">--</div>
         <div id="accuracy" style="font-size:14px; font-weight:800; color:#a855f7; margin-top:-5px; margin-bottom:10px; display:none;"></div>
         <div id="timer" style="font-size:14px; font-weight:800; color:#ffaa00; margin-bottom:15px; min-height:20px;"></div>
-        <button id="martBtn" class="btn" style="display:none; background:#ff3344;" onclick="startTimer(10, false)">АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ</button>
-        <a href="https://t.me/+WB89-UHgktU0YmQy" target="_blank" style="text-decoration: none;"><button id="btn_supp" class="btn btn-support">РАЗРАБОТЧИК / SUPPORT</button></a>
+        <button id="martBtn" class="btn" style="display:none; background:#ff3344;" onclick="startFlow(false)">АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ</button>
+        <a href="https://t.me/andriddddd" target="_blank" style="text-decoration: none;"><button id="btn_supp" class="btn btn-support">РАЗРАБОТЧИК / SUPPORT</button></a>
     </div>
     <script>
         const rawData = {json.dumps(ASSETS_DATA)};
@@ -199,32 +199,26 @@ async def index():
         function updSubCategory() {{ let l = document.getElementById('lang').value, c = document.getElementById('cat').value, t = document.getElementById('sub_cat').value, assets = rawData[l][c][t] || []; document.getElementById('asset').innerHTML = assets.map(a => `<option>${{a}}</option>`).join(''); updAsset(); }}
         function updAsset() {{ let l = document.getElementById('lang').value, asset = document.getElementById('asset').value; document.getElementById('payout_lbl').innerText = `PAYOUT: ${{calcLocalPayout(asset)}}%`; let tfSelect = document.getElementById('time'); tfSelect.innerHTML = tf_options[l].map(o => `<option>${{o}}</option>`).join(''); let expSelect = document.getElementById('exp'); expSelect.innerHTML = (asset.includes("OTC") ? tf_options[l] : tf_options[l].slice(3)).map(o => `<option>${{o}}</option>`).join(''); }}
         
-        async function startTimer(seconds, isAI) {{
-            if(isAI) {{ 
-                document.getElementById('cat').selectedIndex = Math.floor(Math.random()*2); 
-                updCategory(); 
-            }}
+        async function startFlow(isAI) {{
+            if(isAI) {{ document.getElementById('cat').selectedIndex = Math.floor(Math.random()*Object.keys(rawData.ru).length); updCategory(); }}
             document.getElementById('martBtn').style.display = 'none';
-            document.getElementById('loader').style.display = 'block';
+            document.getElementById('res').innerText = "--";
+            
+            let wait = 3; 
             let timerEl = document.getElementById('timer');
-            let wait = seconds;
             let int = setInterval(async () => {{
-                timerEl.innerText = "ВХОД В СДЕЛКУ ЧЕРЕЗ: " + wait;
+                timerEl.innerText = "АНАЛИЗ РЫНКА: " + wait;
                 if(wait-- <= 0) {{
                     clearInterval(int);
-                    document.getElementById('loader').style.display = 'none';
-                    let response = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
-                    let result = await response.json();
-                    document.getElementById('res').style.display = 'block';
-                    document.getElementById('res').innerText = result.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
-                    document.getElementById('res').style.color = result.signal == "UP" ? "#00ff66" : "#ff3344";
-                    document.getElementById('accuracy').innerText = `🎯 ACCURACY: ${{result.accuracy}}%`;
-                    document.getElementById('accuracy').style.display = 'block';
+                    let resp = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
+                    let d = await resp.json();
+                    document.getElementById('res').innerText = d.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
+                    document.getElementById('res').style.color = d.signal == "UP" ? "#00ff66" : "#ff3344";
                     
                     let exp = 60;
                     let expInt = setInterval(() => {{
-                        timerEl.innerText = "ДО ЗАКРЫТИЯ: " + exp;
-                        if(exp-- <= 0) {{ clearInterval(expInt); timerEl.innerText = "СДЕЛКА ЗАКРЫТА"; document.getElementById('martBtn').style.display = 'block'; }}
+                        timerEl.innerText = "ДО ЗАКРЫТИЯ СДЕЛКИ: " + exp;
+                        if(exp-- <= 0) {{ clearInterval(expInt); timerEl.innerText = "ЦИКЛ ЗАВЕРШЕН"; document.getElementById('martBtn').style.display = 'block'; }}
                     }}, 1000);
                 }}
             }}, 1000);
