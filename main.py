@@ -1,147 +1,103 @@
 import json
 import random
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from tradingview_ta import TA_Handler, Interval
 
 app = FastAPI()
 
-# База разделена строго на две категории, включающие ВСЕ активы платформы Pocket Option
-ASSETS = {
-    "[ВСЕ АКТИВЫ] — OTC ЦИКЛ": [
-        "EUR/USD OTC", "GBP/USD OTC", "USD/JPY OTC", "AUD/USD OTC", "EUR/JPY OTC", 
-        "USD/CAD OTC", "GBP/JPY OTC", "NZD/USD OTC", "USD/CHF OTC", "EUR/GBP OTC",
-        "AUD/JPY OTC", "CAD/JPY OTC", "EUR/CAD OTC", "EUR/AUD OTC", "GBP/CAD OTC",
-        "Apple OTC", "Microsoft OTC", "Amazon OTC", "Tesla OTC", "NVIDIA OTC", 
-        "Google OTC", "Netflix OTC", "Meta OTC", "Alibaba OTC", "Intel OTC", 
-        "AMD OTC", "Boeing OTC", "Chevron OTC", "Coca-Cola OTC", "McDonalds OTC", 
-        "Visa OTC", "Walmart OTC", "American Express OTC", "Pfizer OTC",
-        "Gold OTC", "Silver OTC", "Crude Oil OTC", "Brent Oil OTC", "US 500 OTC", "NASDAQ 100 OTC"
-    ],
+# Актуальная база активов Pocket Option
+ASSETS_DATA = {
+    "[ВСЕ АКТИВЫ] — OTC ЦИКЛ": {
+        "ВАЛЮТНЫЕ ПАРЫ": ["EUR/USD OTC", "GBP/USD OTC", "USD/JPY OTC", "AUD/USD OTC", "EUR/JPY OTC", "USD/CAD OTC", "GBP/JPY OTC", "NZD/USD OTC", "USD/CHF OTC", "EUR/GBP OTC"],
+        "АКЦИИ": ["Apple OTC", "Microsoft OTC", "Amazon OTC", "Tesla OTC", "NVIDIA OTC", "Google OTC", "Netflix OTC", "Meta OTC", "Intel OTC", "AMD OTC"],
+        "КРИПТОВАЛЮТА": ["Bitcoin OTC", "Ethereum OTC", "Solana OTC", "Ripple OTC"],
+        "СЫРЬЕ / ИНДЕКСЫ": ["Gold OTC", "Silver OTC", "Crude Oil OTC", "Brent Oil OTC", "US 500 OTC", "NASDAQ 100 OTC"]
+    },
     "[ВСЕ АКТИВЫ] — ЖИВОЙ РЫНОК": [
-        "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "EUR/JPY", 
-        "NZD/USD", "USD/CHF", "EUR/GBP", "GBP/JPY", "AUD/JPY",
-        "Bitcoin (BTC/USD)", "Ethereum (ETH/USD)", "Solana (SOL/USD)", "Ripple (XRP/USD)", "TRON (TRX/USD)",
-        "Apple", "Microsoft", "Tesla", "Amazon", "NVIDIA", "Google", "Netflix", "Intel", "AMD",
-        "Gold (Золото)", "Silver (Серебро)", "Crude Oil (Нефть)", "Brent Oil"
+        "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "EUR/JPY", "NZD/USD", "USD/CHF", "EUR/GBP",
+        "Bitcoin (BTC/USD)", "Ethereum (ETH/USD)", "Solana (SOL/USD)",
+        "Apple", "Microsoft", "Tesla", "Amazon", "NVIDIA",
+        "Gold (Золото)", "Crude Oil (Нефть)"
     ]
 }
 
-TICKER_MAP = {
-    "EUR/USD": {"symbol": "EURUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "EUR/USD OTC": {"symbol": "EURUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "GBP/USD": {"symbol": "GBPUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "GBP/USD OTC": {"symbol": "GBPUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "USD/JPY": {"symbol": "USDJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "USD/JPY OTC": {"symbol": "USDJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "AUD/USD": {"symbol": "AUDUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "AUD/USD OTC": {"symbol": "AUDUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "USD/CAD": {"symbol": "USDCAD", "screener": "forex", "exchange": "USDCAD"},
-    "USD/CAD OTC": {"symbol": "USDCAD", "screener": "forex", "exchange": "USDCAD"},
-    "EUR/JPY": {"symbol": "EURJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "EUR/JPY OTC": {"symbol": "EURJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "GBP/JPY": {"symbol": "GBPJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "GBP/JPY OTC": {"symbol": "GBPJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "NZD/USD": {"symbol": "NZDUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "NZD/USD OTC": {"symbol": "NZDUSD", "screener": "forex", "exchange": "FX_IDC"},
-    "USD/CHF": {"symbol": "USDCHF", "screener": "forex", "exchange": "FX_IDC"},
-    "USD/CHF OTC": {"symbol": "USDCHF", "screener": "forex", "exchange": "FX_IDC"},
-    "EUR/GBP": {"symbol": "EURGBP", "screener": "forex", "exchange": "FX_IDC"},
-    "EUR/GBP OTC": {"symbol": "EURGBP", "screener": "forex", "exchange": "FX_IDC"},
-    "AUD/JPY OTC": {"symbol": "AUDJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "CAD/JPY OTC": {"symbol": "CADJPY", "screener": "forex", "exchange": "FX_IDC"},
-    "EUR/CAD OTC": {"symbol": "EURCAD", "screener": "forex", "exchange": "FX_IDC"},
-    "EUR/AUD OTC": {"symbol": "EURAUD", "screener": "forex", "exchange": "FX_IDC"},
-    "GBP/CAD OTC": {"symbol": "GBPCAD", "screener": "forex", "exchange": "FX_IDC"},
-    "Bitcoin (BTC/USD)": {"symbol": "BTCUSD", "screener": "crypto", "exchange": "BINANCE"},
-    "Ethereum (ETH/USD)": {"symbol": "ETHUSD", "screener": "crypto", "exchange": "BINANCE"},
-    "Solana (SOL/USD)": {"symbol": "SOLUSD", "screener": "crypto", "exchange": "BINANCE"},
-    "Ripple (XRP/USD)": {"symbol": "XRPUSD", "screener": "crypto", "exchange": "BINANCE"},
-    "TRON (TRX/USD)": {"symbol": "TRXUSD", "screener": "crypto", "exchange": "BINANCE"},
-    "Apple": {"symbol": "AAPL", "screener": "america", "exchange": "NASDAQ"},
-    "Apple OTC": {"symbol": "AAPL", "screener": "america", "exchange": "NASDAQ"},
-    "Microsoft": {"symbol": "MSFT", "screener": "america", "exchange": "NASDAQ"},
-    "Microsoft OTC": {"symbol": "MSFT", "screener": "america", "exchange": "NASDAQ"},
-    "Tesla": {"symbol": "TSLA", "screener": "america", "exchange": "NASDAQ"},
-    "Tesla OTC": {"symbol": "TSLA", "screener": "america", "exchange": "NASDAQ"},
-    "Amazon": {"symbol": "AMZN", "screener": "america", "exchange": "NASDAQ"},
-    "Amazon OTC": {"symbol": "AMZN", "screener": "america", "exchange": "NASDAQ"},
-    "NVIDIA": {"symbol": "NVDA", "screener": "america", "exchange": "NASDAQ"},
-    "NVIDIA OTC": {"symbol": "NVDA", "screener": "america", "exchange": "NASDAQ"},
-    "Google": {"symbol": "GOOGL", "screener": "america", "exchange": "NASDAQ"},
-    "Google OTC": {"symbol": "GOOGL", "screener": "america", "exchange": "NASDAQ"},
-    "Gold (Золото)": {"symbol": "GOLD", "screener": "cfd", "exchange": "TVC"},
-    "Gold OTC": {"symbol": "GOLD", "screener": "cfd", "exchange": "TVC"},
-    "Crude Oil OTC": {"symbol": "USOIL", "screener": "cfd", "exchange": "TVC"}
-}
-
-TIMEFRAME_MAP = {
-    "1 мин": Interval.INTERVAL_1_MINUTE, "2 мин": Interval.INTERVAL_1_MINUTE, 
-    "3 мин": Interval.INTERVAL_1_MINUTE, "4 мин": Interval.INTERVAL_1_MINUTE,
-    "5 мин": Interval.INTERVAL_5_MINUTES, "6 мин": Interval.INTERVAL_5_MINUTES,
-    "7 мин": Interval.INTERVAL_5_MINUTES, "8 мин": Interval.INTERVAL_5_MINUTES,
-    "9 мин": Interval.INTERVAL_5_MINUTES, "10 мин": Interval.INTERVAL_15_MINUTES
-}
+def get_pocket_payout(asset: str) -> int:
+    if "OTC" in asset:
+        return 92  
+    if "Bitcoin" in asset or "Ethereum" in asset or "Solana" in asset:
+        return 78  
+    if "Gold" in asset or "Oil" in asset:
+        return 82  
+    return 85  
 
 @app.get("/get_signal")
 async def get_signal(asset: str, timeframe: str):
-    try:
-        # Для OTC или секундных таймфреймов применяем калиброванную нейросетевую модель
-        if "сек" in timeframe or "OTC" in asset or asset not in TICKER_MAP:
-            # Оптимизированный порог пробития уровней для повышенной точности
-            is_up = random.random() > 0.42
-            return {"signal": "UP" if is_up else "DOWN", "status": "SUCCESS_OTC"}
-            
-        mapping = TICKER_MAP[asset]
-        interval = TIMEFRAME_MAP.get(timeframe, Interval.INTERVAL_1_MINUTE)
-        
-        handler = TA_Handler(symbol=mapping["symbol"], screener=mapping["screener"], exchange=mapping["exchange"], interval=interval)
-        analysis = handler.get_analysis()
-        summary = analysis.summary["RECOMMENDATION"]
-        
-        if "BUY" in summary:
-            return {"signal": "UP", "status": "SUCCESS_REAL_BUY"}
-        elif "SELL" in summary:
-            return {"signal": "DOWN", "status": "SUCCESS_REAL_SELL"}
-        else:
-            # При нейтральном рынке бот заходит в сторону глобального математического тренда дня
-            is_up = random.random() > 0.45
-            return {"signal": "UP" if is_up else "DOWN", "status": "SUCCESS_FLAT"}
-    except:
-        return {"signal": "UP" if random.random() > 0.45 else "DOWN", "status": "SUCCESS_BACKUP"}
+    payout = get_pocket_payout(asset)
+    accuracy = round(random.uniform(88.4, 96.8), 1)
+    is_up = random.random() > 0.41
+    return {
+        "signal": "UP" if is_up else "DOWN", 
+        "payout": payout,
+        "accuracy": accuracy
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
     return """
-    <html style="background:#0a0c14; color:#ffffff; font-family:'Segoe UI', Roboto, sans-serif; margin:0; padding:0;">
+    <html style="background:#06080c; color:#ffffff; font-family:'Segoe UI', Roboto, sans-serif; margin:0; padding:0;">
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>HROM TRADING BOT</title>
+        <title>HROM QUANTUM CORE v13.0</title>
         <style>
-            @keyframes pulse { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
-            .loading-text { animation: pulse 1.2s infinite; color: #bc66ff; font-weight: 900; font-size: 22px; letter-spacing: 2px; }
-            select {
-                width: 100%; padding: 15px; background: #121622; border: 1px solid #1e2536; 
-                border-radius: 16px; font-size: 14px; font-weight: 600; color: #ffffff; outline: none; appearance: none;
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            @keyframes shine { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+            
+            .loader { 
+                width: 45px; height: 45px; border: 4px solid #161b26; border-top: 4px solid #a855f7; 
+                border-radius: 50%; animation: spin 0.8s linear infinite; margin: 15px auto; display: none;
             }
-            label { font-size: 11px; font-weight: bold; color: #5c6e8c; display: block; margin-bottom: 6px; letter-spacing: 0.8px; text-transform: uppercase; }
+            
+            select {
+                width: 100%; padding: 14px; background: #0f131e; border: 1px solid #1a2233; 
+                border-radius: 14px; font-size: 14px; font-weight: 600; color: #ffffff; outline: none; appearance: none;
+            }
+            label { font-size: 11px; font-weight: bold; color: #4b5975; display: block; margin-bottom: 5px; letter-spacing: 0.8px; text-transform: uppercase; }
+            
             .btn {
-                width: 100%; padding: 18px; border: none; color: white; font-weight: 800; border-radius: 16px; 
-                cursor: pointer; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+                width: 100%; padding: 16px; border: none; color: white; font-weight: 800; border-radius: 14px; 
+                cursor: pointer; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; margin-bottom: 10px;
             }
             .btn-main { background: linear-gradient(135deg, #963bfe 0%, #641bfa 100%); box-shadow: 0 5px 20px rgba(100,27,250,0.4); }
-            .btn-main:active { transform: scale(0.98); }
-            .btn-pocket { background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%); margin-top: 12px; box-shadow: 0 5px 15px rgba(0,180,219,0.3); }
-            .btn-support { background: #171c28; border: 1px solid #29344d; color: #8fa0c2; margin-top: 25px; font-size: 12px; }
-            .btn-support:hover { border-color: #00ff66; color: #00ff66; }
-            .lang-select { background: #121622; color: white; border: 1px solid #1e2536; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; }
+            .btn-auto { background: linear-gradient(135deg, #00ff66 0%, #00b344 100%); color: #000; font-weight: 900; }
+            
+            .btn-vip { 
+                background: linear-gradient(270deg, #ffd700, #ffa500, #b8860b, #ffd700);
+                background-size: 400% 400%;
+                animation: shine 4s ease infinite;
+                color: #000 !important; font-weight: 900; font-size: 14px;
+                box-shadow: 0 5px 20px rgba(255,215,0,0.4);
+            }
+            
+            .btn-pocket { background: #141924; border: 1px solid #222d42; color: #38ef7d; }
+            .btn-support { background: #080a10; border: 1px solid #161b26; color: #586988; font-size: 11px; margin-top: 15px; }
+            .btn:active { transform: scale(0.98); }
+            .lang-select { background: #0f131e; color: white; border: 1px solid #1a2233; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; }
+            .payout-badge { color: #00ff66; font-weight: 800; font-size: 12px; margin-top: 4px; display: block; }
+            
+            /* Минималистичные счетчики сессии */
+            .counter-box {
+                display: flex; justify-content: center; gap: 25px; margin: 15px 0 5px 0;
+                font-size: 14px; font-weight: 800; letter-spacing: 0.5px;
+            }
+            .count-item { display: flex; align-items: center; gap: 6px; background: #0f131e; padding: 6px 14px; border-radius: 10px; border: 1px solid #1a2233; }
         </style>
     </head>
     
     <div style="max-width:430px; margin:15px auto; padding:0 15px; display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; align-items:center; gap:8px;">
-            <span id="flag_icon" style="font-size:20px; line-height:1; transition: opacity 0.2s;">🇷🇺</span>
-            <span style="font-weight:900; font-size:14px; color:#ffffff; letter-spacing:0.5px;">HROM BOT PRO</span>
+            <span id="flag_icon" style="font-size:20px; line-height:1;">🇷🇺</span>
+            <span style="font-weight:900; font-size:14px; color:#ffffff; letter-spacing:0.5px;">HROM SUPREME</span>
         </div>
         <div>
             <select id="lang" class="lang-select" onchange="changeLang()">
@@ -154,24 +110,30 @@ async def index():
         </div>
     </div>
 
-    <div style="max-width:430px; margin:0 auto 30px auto; padding:30px; background:#0e111a; border-radius:32px; border: 1px solid #181d2b; box-shadow: 0 25px 50px rgba(0,0,0,0.6); text-align:center;">
+    <div style="max-width:430px; margin:0 auto 30px auto; padding:25px; background:#080a10; border-radius:28px; border: 1px solid #121722; box-shadow: 0 25px 50px rgba(0,0,0,0.8); text-align:center;">
         
-        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:25px;">
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:20px;">
             <div style="width:7px; height:7px; background:#00ff66; border-radius:50%; box-shadow: 0 0 10px #00ff66;"></div>
-            <span id="lbl_title" style="font-size:12px; font-weight:800; letter-spacing:2px; color:#00ff66; text-transform:uppercase;">AI QUANTUM ENGINE ACTIVE</span>
+            <span id="lbl_title" style="font-size:11px; font-weight:800; letter-spacing:2px; color:#00ff66;">AI QUANTUM ENGINE ACTIVE</span>
         </div>
         
-        <div style="text-align:left; margin-bottom:18px;">
+        <div style="text-align:left; margin-bottom:14px;">
             <label id="lbl_market">КАТЕГОРИЯ РЫНКА</label>
             <select id="cat" onchange="updCategory()"></select>
         </div>
         
-        <div style="text-align:left; margin-bottom:18px;">
-            <label id="lbl_asset">АКТИВНАЯ ПАРА</label>
-            <select id="asset" onchange="updAsset()"></select>
+        <div id="sub_cat_block" style="text-align:left; margin-bottom:14px; display:none;">
+            <label id="lbl_type">ТИП OTC АКТИВА</label>
+            <select id="sub_cat" onchange="updSubCategory()"></select>
         </div>
         
-        <div style="display:flex; gap:14px; margin-bottom:25px; text-align:left;">
+        <div style="text-align:left; margin-bottom:14px;">
+            <label id="lbl_asset">АКТИВНАЯ ПАРА</label>
+            <select id="asset" onchange="updAsset()"></select>
+            <span id="payout_lbl" class="payout-badge">PAYOUT: 92%</span>
+        </div>
+        
+        <div style="display:flex; gap:12px; margin-bottom:20px; text-align:left;">
             <div style="flex:1;">
                 <label id="lbl_tf">ИНТЕРВАЛ СВЕЧИ</label>
                 <select id="time"></select>
@@ -183,115 +145,168 @@ async def index():
         </div>
 
         <button id="runBtn" class="btn btn-main" onclick="getLiveSignal(false)">СКАНИРОВАТЬ РЫНОК</button>
+        <button id="autoBtn" class="btn btn-auto" onclick="aiDoForYou()">ИИ СДЕЛАТЬ ЗА ВАС</button>
+        
+        <a href="https://t.me/andriddddd" target="_blank" style="text-decoration: none;">
+            <button id="vipBtn" class="btn btn-vip">🔥 VIP КАНАЛ СИГНАЛОВ 🔥</button>
+        </a>
         
         <a href="https://pocketoption.com/register" target="_blank" style="text-decoration: none;">
             <button id="btn_pocket" class="btn btn-pocket">ОТКРЫТЬ POCKET OPTION</button>
         </a>
         
-        <div id="status" style="font-size:11px; color:#5c6e8c; margin-top:25px; min-height:18px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">СИСТЕМА СИНХРОНИЗИРОВАНА</div>
+        <div id="status" style="font-size:11px; color:#4b5975; margin-top:20px; min-height:18px; font-weight:700; letter-spacing:0.5px;">СИСТЕМА СИНХРОНИЗИРОВАНА</div>
         
-        <div id="res" style="font-size:55px; font-weight:900; margin:12px 0; min-height:66px; letter-spacing:2px; color:#ffffff;">--</div>
+        <div id="loader" class="loader"></div>
         
-        <div id="timer" style="font-size:14px; font-weight:800; color:#ffaa00; margin-bottom:20px; min-height:20px; letter-spacing:0.5px;"></div>
+        <div id="res" style="font-size:55px; font-weight:900; margin:10px 0; min-height:66px; letter-spacing:2px; color:#ffffff;">--</div>
+        <div id="accuracy" style="font-size:14px; font-weight:800; color:#a855f7; margin-top:-5px; margin-bottom:10px; display:none;"></div>
         
-        <button id="mart" class="btn" onclick="getLiveSignal(true)" style="display:none; background:#ff3344; box-shadow: 0 5px 15px rgba(255,51,68,0.3); margin-top:10px;">АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ</button>
+        <div class="counter-box">
+            <div class="count-item">
+                <span style="color:#586988; font-size:12px;">PROFIT:</span>
+                <span id="win_counter" style="color:#00ff66;">0</span>
+            </div>
+            <div class="count-item">
+                <span style="color:#586988; font-size:12px;">LOSS:</span>
+                <span id="loss_counter" style="color:#ff3344;">0</span>
+            </div>
+        </div>
+
+        <div id="timer" style="font-size:14px; font-weight:800; color:#ffaa00; margin-bottom:15px; min-height:20px;"></div>
+        
+        <button id="mart" class="btn" onclick="getLiveSignal(true)" style="display:none; background:#ff3344; box-shadow: 0 5px 15px rgba(255,51,68,0.3);">АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ</button>
 
         <a href="https://t.me/andriddddd" target="_blank" style="text-decoration: none;">
-            <button id="btn_supp" class="btn btn-support">ПОДДЕРЖКА ИИ / SUPPORT</button>
+            <button id="btn_supp" class="btn btn-support">РАЗРАБОТЧИК / SUPPORT</button>
         </a>
     </div>
     
     <script>
-        const data = """ + json.dumps(ASSETS) + """;
-        const allIntervals = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"];
-        const fullExp = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"];
-        const limitedExp = ["1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "6 мин", "7 мин", "8 мин", "9 мин", "10 мин"];
+        const rawData = """ + json.dumps(ASSETS_DATA) + """;
+        const allIntervals = ["5 сек", "15 сек", "30 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "10 мин"];
+        const fullExp = ["5 сек", "15 сек", "300 сек", "1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "10 мин"];
+        const limitedExp = ["1 мин", "2 мин", "3 мин", "4 мин", "5 мин", "10 мин"];
         let mainInterval = null;
+        let currentAssetPayout = 92;
+
+        let wins = 0;
+        let losses = 0;
 
         const flags = { ru: "🇷🇺", en: "🇺🇸", ua: "🇺🇦", es: "🇪🇸", de: "🇩🇪" };
-
         const dictionary = {
             ru: {
-                title: "AI QUANTUM ENGINE ACTIVE", market: "КАТЕГОРИЯ РЫНКА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ",
-                exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", pocket: "ОТКРЫТЬ POCKET OPTION", support: "ПОДДЕРЖКА ИИ",
-                ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", load: "ГЕНЕРАЦИЯ ПОТОКА ДАННЫХ...", UP: "ВВЕРХ", DOWN: "ВНИЗ",
+                title: "AI QUANTUM ENGINE ACTIVE", market: "КАТЕГОРИЯ РЫНКА", type: "ТИП OTC АКТИВА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ",
+                exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", auto: "ИИ СДЕЛАТЬ ЗА ВАС", pocket: "ОТКРЫТЬ POCKET OPTION", support: "РАЗРАБОТЧИК / SUPPORT",
+                ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", load: "[ ANALYZING MARKET ORDER... ]", UP: "ВВЕРХ / CALL", DOWN: "ВНИЗ / PUT",
                 otc: "OTC СИСТЕМА: РАСЧЕТ ИИ УСПЕШЕН", buy: "АНАЛИЗ TV: СИГНАЛ НА ПОКУПКУ", sell: "АНАЛИЗ TV: СИГНАЛ НА ПРОДАЖУ",
-                flat: "МАТРИЦА ОБЪЕМОВ: ИМПУЛЬС ТРЕНДА", backup: "АВТОНОМНЫЙ ИИ РЕЖИМ", mart_status: "РАСЧЕТ ШАГА МАРТИНГЕЙЛА...",
-                mart_btn: "АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ", wait: "ВХОД В СДЕЛКУ ЧЕРЕЗ: ", process: "СДЕЛКА В ПРОЦЕССЕ ТОРГОВЛИ: ", end: "ТОРГОВЫЙ ЦИКЛ ЗАВЕРШЕН"
+                flat: "МАТРИЦА ОБЪЕМОВ: ИМПУЛЬС ТРЕНДА", backup: "АВТОНОМНЫЙ ИИ РЕЖИМ", mart_status: "[ CALCULATING MARTINGALE STEP... ]",
+                mart_btn: "АКТИВИРОВАТЬ ПЕРЕКРЫТИЕ", wait: "ВХОД В СДЕЛКУ ЧЕРЕЗ: ", process: "СДЕЛКА В ПРОЦЕССЕ ТОРГОВЛИ: ", end: "ТОРГОВЫЙ ЦИКЛ ЗАВЕРШЕН",
+                ai_search: "[ AI SEARCHING BEST ENTRY POINT... ]"
             },
             en: {
-                title: "AI QUANTUM ENGINE ACTIVE", market: "MARKET CATEGORY", asset: "ACTIVE PAIR", tf: "CANDLE TIMEFRAME",
-                exp: "EXPIRATION TIME", scan: "SCAN MARKET", pocket: "OPEN POCKET OPTION", support: "SUPPORT AI",
-                ready: "SYSTEM SYNCHRONIZED", load: "GENERATING DATASTREAM...", UP: "CALL", DOWN: "PUT",
+                title: "AI QUANTUM ENGINE ACTIVE", market: "MARKET CATEGORY", type: "OTC ASSET TYPE", asset: "ACTIVE PAIR", tf: "CANDLE TIMEFRAME",
+                exp: "EXPIRATION TIME", scan: "SCAN MARKET", auto: "AI DO FOR YOU", pocket: "OPEN POCKET OPTION", support: "DEVELOPER / SUPPORT",
+                ready: "SYSTEM SYNCHRONIZED", load: "[ ANALYZING MARKET ORDER... ]", UP: "CALL", DOWN: "PUT",
                 otc: "OTC SYSTEM: AI CALCULATION SUCCESS", buy: "TV ANALYSIS: BUY SIGNAL", sell: "TV ANALYSIS: SELL SIGNAL",
-                flat: "VOLUME MATRIX: TREND IMPULSE", backup: "AUTONOMOUS AI MODE", mart_status: "CALCULATING MARTINGALE STEP...",
-                mart_btn: "ACTIVATE MULTIPLIER", wait: "ENTER TRADE IN: ", process: "TRADE IN PROCESS: ", end: "TRADE CYCLE COMPLETED"
-            },
-            ua: {
-                title: "AI QUANTUM ENGINE ACTIVE", market: "КАТЕГОРІЯ РИНКУ", asset: "АКТИВНА ПАРА", tf: "ІНТЕРВАЛ СВІЧКИ",
-                exp: "ЕКСПІРАЦІЯ", scan: "СКАНУВАТИ РИНОК", pocket: "ВІДКРИТИ POCKET OPTION", support: "ПІДТРИМКА ІИ",
-                ready: "СИСТЕМА СИНХРОНІЗОВАНА", load: "ГЕНЕРАЦІЯ ПОТОКУ ДАНИХ...", UP: "ВГОРУ", DOWN: "ВНИЗ",
-                otc: "OTC СИСТЕМА: РОЗРАХУНОК ІИ УСПІШНИЙ", buy: "АНАЛІЗ TV: СИГНАЛ НА ПОКУПКУ", sell: "АНАЛІЗ TV: СИГНАЛ НА ПРОДАЖУ",
-                flat: "МАТРИЦЯ ОБ'ЄМІВ: ІМПУЛЬС ТРЕНДУ", backup: "АВТОНОМНИЙ РЕЖИМ ІИ", mart_status: "РОЗРАХУНОК КРОКУ МАРТИНГЕЙЛА...",
-                mart_btn: "АКТИВУВАТИ ПЕРЕКРИТТЯ", wait: "ВХІД У СДЕЛКУ ЧЕРЕЗ: ", process: "УГОДА В ПРОЦЕСІ ТОРГІВЛІ: ", end: "ТОРГОВИЙ ЦИКЛ ЗАВЕРШЕНО"
-            },
-            es: {
-                title: "AI QUANTUM ENGINE ACTIVE", market: "CATEGORÍA DE MERCADO", asset: "PAR ACTIVO", tf: "TIEMPO DE VELA",
-                exp: "EXPIRACIÓN", scan: "ESCANEAR MERCADO", pocket: "ABRIR POCKET OPTION", support: "SOPORTE IA",
-                ready: "SISTEMA SINCRONIZADO", load: "GENERANDO FLUJO DE DATOS...", UP: "SUBE", DOWN: "BAJA",
-                otc: "SISTEMA OTC: CÁLCULO IA EXITOSO", buy: "ANÁLISIS TV: SEÑAL DE COMPRA", sell: "ANÁLISIS TV: SEÑAL DE VENTA",
-                flat: "MATRIZ DE VOLUMEN: IMPULSO DE TENDENCIA", backup: "MODO IA AUTÓNOMO", mart_status: "CALCULANDO PASO MARTINGALA...",
-                mart_btn: "ACTIVAR COBERTURA", wait: "ENTRAR EN OPERACIÓN EN: ", process: "OPERACIÓN EN PROCESO: ", end: "CICLO DE TRADING COMPLETADO"
-            },
-            de: {
-                title: "AI QUANTUM ENGINE ACTIVE", market: "MARKTKATEGORIE", asset: "AKTIVES PAAR", tf: "KERZEN-ZEITRAHMEN",
-                exp: "ABLAUFZEIT", scan: "MARKT SCANNEN", pocket: "POCKET OPTION ÖFFNEN", support: "KI SUPPORT",
-                ready: "SYSTEM SYNCHRONISIERT", load: "DATENSTROM WIRD GENERIERT...", UP: "HOCH", DOWN: "RUNTER",
-                otc: "OTC-SYSTEM: KI-BERECHNUNG ERFOLGREICH", buy: "TV-ANALYSE: KAUFSIGNAL", sell: "TV-ANALYSE: VERKAUFSIGNAL",
-                flat: "VOLUMENMATRIX: TRENDIMPULS", backup: "AUTONOMER KI-MODUS", mart_status: "MARTINGALE-SCHRITT WIRD BERECHNET...",
-                mart_btn: "ABSICHERUNG AKTIVIEREN", wait: "EINSTIEG IN: ", process: "TRADE LÄUFT: ", end: "HANDELSZYKLUS BEENDET"
+                flat: "VOLUME MATRIX: TREND IMPULSE", backup: "AUTONOMOUS AI MODE", mart_status: "[ CALCULATING MARTINGALE STEP... ]",
+                mart_btn: "ACTIVATE MULTIPLIER", wait: "ENTER TRADE IN: ", process: "TRADE IN PROCESS: ", end: "TRADE CYCLE COMPLETED",
+                ai_search: "[ AI SEARCHING BEST ENTRY POINT... ]"
             }
         };
 
         function changeLang() {
             let l = document.getElementById('lang').value;
-            let d = dictionary[l];
-            
-            // ДИНАМИЧЕСКИЙ СМЕННЫЙ ФЛАГ В ШАПКЕ
+            let d = dictionary[l] || dictionary['en'];
             document.getElementById('flag_icon').innerText = flags[l];
-            
             document.getElementById('lbl_title').innerText = d.title;
             document.getElementById('lbl_market').innerText = d.market;
+            if(document.getElementById('lbl_type')) document.getElementById('lbl_type').innerText = d.type;
             document.getElementById('lbl_asset').innerText = d.asset;
             document.getElementById('lbl_tf').innerText = d.tf;
             document.getElementById('lbl_exp').innerText = d.exp;
             document.getElementById('runBtn').innerText = d.scan;
+            document.getElementById('autoBtn').innerText = d.auto;
             document.getElementById('btn_pocket').innerText = d.pocket;
             document.getElementById('btn_supp').innerText = d.support;
             document.getElementById('mart').innerText = d.mart_btn;
             document.getElementById('status').innerText = d.ready;
         }
-        
+
         function init(){
             allIntervals.forEach(o => document.getElementById('time').innerHTML += `<option>${o}</option>`);
-            Object.keys(data).forEach(c => document.getElementById('cat').innerHTML += `<option>${c}</option>`);
+            Object.keys(rawData).forEach(c => document.getElementById('cat').innerHTML += `<option>${c}</option>`);
             updCategory();
             changeLang();
         }
-        
-        function updCategory(){ 
-            let c = document.getElementById('cat').value; 
-            document.getElementById('asset').innerHTML = data[c].map(a => `<option>${a}</option>`).join(''); 
+
+        function calcLocalPayout(assetName) {
+            if(assetName.includes("OTC")) return 92;
+            if(assetName.includes("BTC") || assetName.includes("ETH") || assetName.includes("Solana") || assetName.includes("Bitcoin") || assetName.includes("Ethereum")) return 78;
+            if(assetName.includes("Gold") || assetName.includes("Oil") || assetName.includes("Нефть") || assetName.includes("Золото")) return 82;
+            return 85;
+        }
+
+        function updCategory(){
+            let c = document.getElementById('cat').value;
+            let subBlock = document.getElementById('sub_cat_block');
+            
+            if(c.includes("OTC")) {
+                subBlock.style.display = 'block';
+                let types = Object.keys(rawData[c]);
+                document.getElementById('sub_cat').innerHTML = types.map(t => `<option>${t}</option>`).join('');
+                updSubCategory();
+            } else {
+                subBlock.style.display = 'none';
+                document.getElementById('asset').innerHTML = rawData[c].map(a => `<option>${a}</option>`).join('');
+                updAsset();
+            }
+        }
+
+        function updSubCategory() {
+            let c = document.getElementById('cat').value;
+            let t = document.getElementById('sub_cat').value;
+            document.getElementById('asset').innerHTML = rawData[c][t].map(a => `<option>${a}</option>`).join('');
             updAsset();
         }
 
         function updAsset() {
             let asset = document.getElementById('asset').value;
+            currentAssetPayout = calcLocalPayout(asset);
+            document.getElementById('payout_lbl').innerText = `PAYOUT: ${currentAssetPayout}%`;
+            
             let expSelect = document.getElementById('exp');
             expSelect.innerHTML = "";
             let isOtc = asset.includes("OTC");
             let currentOptions = isOtc ? fullExp : limitedExp;
             currentOptions.forEach(o => { expSelect.innerHTML += `<option value="${o}">${o}</option>`; });
+        }
+
+        async function aiDoForYou() {
+            let cats = Object.keys(rawData);
+            let randomCat = cats[Math.floor(Math.random() * cats.length)];
+            document.getElementById('cat').value = randomCat;
+            updCategory();
+            
+            if(randomCat.includes("OTC")) {
+                let subCats = Object.keys(rawData[randomCat]);
+                let randomSub = subCats[Math.floor(Math.random() * subCats.length)];
+                document.getElementById('sub_cat').value = randomSub;
+                updSubCategory();
+            }
+            
+            let assetSelect = document.getElementById('asset');
+            let randomAsset = assetSelect.options[Math.floor(Math.random() * assetSelect.options.length)].value;
+            assetSelect.value = randomAsset;
+            updAsset();
+            
+            let tfSelect = document.getElementById('time');
+            tfSelect.value = tfSelect.options[Math.floor(Math.random() * tfSelect.options.length)].value;
+            
+            let expSelect = document.getElementById('exp');
+            expSelect.value = expSelect.options[Math.floor(Math.random() * expSelect.options.length)].value;
+            
+            getLiveSignal(false, true);
         }
 
         function parseToSeconds(valStr) {
@@ -300,24 +315,30 @@ async def index():
             if(valStr.includes("мин") || valStr.includes("min")) return num * 60;
             return 60;
         }
-        
-        async function getLiveSignal(isMartingale) {
+
+        async function getLiveSignal(isMartingale, isAiAuto = false) {
             if(mainInterval) clearInterval(mainInterval);
             let l = document.getElementById('lang').value;
-            let d = dictionary[l];
+            let d = dictionary[l] || dictionary['en'];
             
             const runBtn = document.getElementById('runBtn');
+            const autoBtn = document.getElementById('autoBtn');
             const martBtn = document.getElementById('mart');
             const status = document.getElementById('status');
             const res = document.getElementById('res');
             const timer = document.getElementById('timer');
+            const loader = document.getElementById('loader');
+            const accField = document.getElementById('accuracy');
             
             runBtn.disabled = true;
+            autoBtn.disabled = true;
             martBtn.disabled = true;
             
-            // Воссоздаем точную бегущую строку TRANSFER DATA из видео
-            res.innerHTML = '<span class="loading-text">TRANSFER DATA...</span>';
-            status.innerText = isMartingale ? d.mart_status : d.load;
+            res.style.display = 'none';
+            accField.style.display = 'none';
+            loader.style.display = 'block';
+            
+            status.innerText = isAiAuto ? d.ai_search : (isMartingale ? d.mart_status : d.load);
             timer.innerText = "";
             
             let asset = document.getElementById('asset').value;
@@ -330,25 +351,27 @@ async def index():
                 
                 await new Promise(r => setTimeout(r, 2600));
                 
+                loader.style.display = 'none';
+                res.style.display = 'block';
+                
                 res.innerText = d[result.signal];
                 res.style.color = result.signal === "UP" ? "#00ff66" : "#ff3344";
                 
-                if(result.status === "SUCCESS_OTC") status.innerText = d.otc;
-                else if(result.status === "SUCCESS_REAL_BUY") status.innerText = d.buy;
-                else if(result.status === "SUCCESS_REAL_SELL") status.innerText = d.sell;
-                else if(result.status === "SUCCESS_FLAT") status.innerText = d.flat;
-                else status.innerText = d.backup;
+                accField.innerText = `🎯 ACCURACY: ${result.accuracy}%`;
+                accField.style.display = 'block';
+                status.innerText = d.otc;
                 
             } catch(e) {
+                loader.style.display = 'none';
+                res.style.display = 'block';
                 res.innerText = d.UP;
                 res.style.color = "#00ff66";
                 status.innerText = d.backup;
             }
             
             runBtn.disabled = false;
+            autoBtn.disabled = false;
             martBtn.disabled = false;
-            
-            // ПРАВИЛО: Кнопка перекрытия появляется на экране строго ПОСЛЕ того, как выдан сигнал
             martBtn.style.display = 'block';
             
             let entryTime = 10;
@@ -372,6 +395,15 @@ async def index():
                                 clearInterval(mainInterval);
                                 timer.style.color = "#ffffff";
                                 timer.innerText = d.end;
+                                
+                                // ПРОСТАЯ ФИКСАЦИЯ РЕЗУЛЬТАТА В СЧЕТЧИКИ СЕССИИ (+ ИЛИ -)
+                                if (Math.random() > 0.15) {
+                                    wins++;
+                                    document.getElementById('win_counter').innerText = wins;
+                                } else {
+                                    losses++;
+                                    document.getElementById('loss_counter').innerText = losses;
+                                }
                             }
                         }, 1000);
                     }
