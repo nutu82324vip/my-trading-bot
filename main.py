@@ -109,9 +109,7 @@ async def index():
             .btn-vip-top {{ padding: 8px 12px; border: none; border-radius: 8px; background: linear-gradient(270deg, #ffd700, #ffa500, #b8860b, #ffd700); background-size: 400% 400%; animation: shine 4s ease infinite; color: #000 !important; font-weight: 900; font-size: 11px; cursor: pointer; box-shadow: 0 2px 10px rgba(255,215,0,0.3); text-transform: uppercase; letter-spacing: 0.5px; }}
             .btn-pocket {{ background: #141924; border: 1px solid #222d42; color: #38ef7d; }}
             .btn-support {{ background: #080a10; border: 1px solid #161b26; color: #586988; font-size: 11px; margin-top: 15px; }}
-            .btn-mart {{ background: #ff3344; display: none; }}
-            .btn-repeat {{ background: #2a3547; color: #fff; display: none; }}
-            .action-row {{ display: flex; gap: 10px; margin-bottom: 10px; }}
+            .btn-mart {{ background: #ff3344; display: none; width: 100%; }}
             .btn:active {{ transform: scale(0.98); }}
             .lang-select {{ background: #0f131e; color: white; border: 1px solid #1a2233; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: bold; }}
             .payout-badge {{ color: #00ff66; font-weight: 800; font-size: 12px; margin-top: 4px; display: block; }}
@@ -147,10 +145,7 @@ async def index():
         <button id="runBtn" class="btn btn-main" onclick="startFlow(false)">СКАНИРОВАТЬ РЫНОК</button>
         <button id="autoBtn" class="btn btn-auto" onclick="startFlow(true)">ИИ СДЕЛАТЬ ЗА ВАС</button>
         
-        <div id="action_row" class="action-row">
-            <button id="martBtn" class="btn btn-mart" onclick="startFlow(false, true)">ПЕРЕКРЫТИЕ</button>
-            <button id="repeatBtn" class="btn btn-repeat" onclick="repeatSignal()">ПОВТОРИТЬ</button>
-        </div>
+        <button id="martBtn" class="btn btn-mart" onclick="startFlow(false, true)">ПЕРЕКРЫТИЕ</button>
         
         <a href="https://pocketoption.com/register" target="_blank" style="text-decoration: none;"><button id="btn_pocket" class="btn btn-pocket">ОТКРЫТЬ POCKET OPTION</button></a>
         <div id="status" style="font-size:11px; color:#4b5975; margin-top:20px; min-height:18px; font-weight:700; letter-spacing:0.5px;">СИСТЕМА СИНХРОНИЗИРОВАНА</div>
@@ -167,7 +162,6 @@ async def index():
         let wins = 0, losses = 0;
         let currentBet = 100;
         let martStep = 0;
-        let lastSignal = null;
 
         function updateStat(type, val) {{ if(type=='win') wins = Math.max(0, wins + val); else losses = Math.max(0, losses + val); updateDisplay(); }}
         function updateDisplay() {{
@@ -183,8 +177,8 @@ async def index():
 
         const flags = {{ ru: "🇷🇺", en: "🇺🇸", ua: "🇺🇦", es: "🇪🇸", de: "🇩🇪" }};
         const dictionary = {{ 
-            ru: {{ market: "КАТЕГОРИЯ РЫНКА", type: "ТИП АКТИВА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ", exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", auto: "ИИ СДЕЛАТЬ ЗА ВАС", pocket: "ОТКРЫТЬ POCKET OPTION", support: "РАЗРАБОТЧИК / SUPPORT", ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", vip: "👑 VIP СИГНАЛЫ", mart: "ПЕРЕКРЫТИЕ", repeat: "ПОВТОРИТЬ" }}, 
-            en: {{ market: "MARKET CATEGORY", type: "ASSET TYPE", asset: "ACTIVE PAIR", tf: "CANDLE TIMEFRAME", exp: "EXPIRATION TIME", scan: "SCAN MARKET", auto: "AI DO FOR YOU", pocket: "OPEN POCKET OPTION", support: "DEVELOPER / SUPPORT", ready: "SYSTEM SYNCHRONIZED", vip: "👑 VIP SIGNALS", mart: "MARTINGALE", repeat: "REPEAT" }}
+            ru: {{ market: "КАТЕГОРИЯ РЫНКА", type: "ТИП АКТИВА", asset: "АКТИВНАЯ ПАРА", tf: "ИНТЕРВАЛ СВЕЧИ", exp: "ЭКСПИРАЦИЯ", scan: "СКАНИРОВАТЬ РЫНОК", auto: "ИИ СДЕЛАТЬ ЗА ВАС", pocket: "ОТКРЫТЬ POCKET OPTION", support: "РАЗРАБОТЧИК / SUPPORT", ready: "СИСТЕМА СИНХРОНИЗИРОВАНА", vip: "👑 VIP СИГНАЛЫ", mart: "ПЕРЕКРЫТИЕ" }}, 
+            en: {{ market: "MARKET CATEGORY", type: "ASSET TYPE", asset: "ACTIVE PAIR", tf: "CANDLE TIMEFRAME", exp: "EXPIRATION TIME", scan: "SCAN MARKET", auto: "AI DO FOR YOU", pocket: "OPEN POCKET OPTION", support: "DEVELOPER / SUPPORT", ready: "SYSTEM SYNCHRONIZED", vip: "👑 VIP SIGNALS", mart: "MARTINGALE" }}
         }};
 
         function changeLang() {{ 
@@ -203,7 +197,6 @@ async def index():
             document.getElementById('status').innerText = d.ready; 
             document.getElementById('vip_btn_text').innerText = d.vip; 
             document.getElementById('martBtn').innerText = d.mart;
-            document.getElementById('repeatBtn').innerText = d.repeat;
             let catSelect = document.getElementById('cat'); 
             catSelect.innerHTML = ""; 
             Object.keys(rawData[l]).forEach(c => {{ catSelect.innerHTML += `<option>${{c}}</option>`; }}); 
@@ -226,7 +219,6 @@ async def index():
             else {{ currentBet = (currentBet * 2.3).toFixed(2); martStep++; }}
 
             document.getElementById('martBtn').style.display = 'none';
-            document.getElementById('repeatBtn').style.display = 'none';
             document.getElementById('res').innerText = "--";
             document.getElementById('loader').style.display = 'block';
             await new Promise(r => setTimeout(r, 2000));
@@ -234,10 +226,8 @@ async def index():
             
             let resp = await fetch(`/get_signal?asset=${{encodeURIComponent(document.getElementById('asset').value)}}&timeframe=${{encodeURIComponent(document.getElementById('time').value)}}`);
             let d = await resp.json();
-            lastSignal = d;
             
-            let signalText = (d.signal == "UP" ? "ВВЕРХ" : "ВНИЗ");
-            document.getElementById('res').innerText = signalText;
+            document.getElementById('res').innerText = (d.signal == "UP" ? "ВВЕРХ" : "ВНИЗ");
             document.getElementById('res').style.color = d.signal == "UP" ? "#00ff66" : "#ff3344";
             document.getElementById('accuracy').style.display = 'block';
             document.getElementById('accuracy').innerText = "ACCURACY: " + d.accuracy + "%";
@@ -258,20 +248,10 @@ async def index():
                             clearInterval(expInt); 
                             timerEl.innerText = "ЦИКЛ ЗАВЕРШЕН"; 
                             document.getElementById('martBtn').style.display = 'block';
-                            document.getElementById('repeatBtn').style.display = 'block';
                         }}
                     }}, 1000);
                 }}
             }}, 1000);
-        }}
-
-        function repeatSignal() {{
-            if (!lastSignal) return;
-            document.getElementById('res').innerText = lastSignal.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
-            document.getElementById('res').style.color = lastSignal.signal == "UP" ? "#00ff66" : "#ff3344";
-            document.getElementById('timer').innerText = "ПОВТОР: ВХОД СЕЙЧАС!";
-            document.getElementById('martBtn').style.display = 'none';
-            document.getElementById('repeatBtn').style.display = 'none';
         }}
 
         changeLang();
