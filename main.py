@@ -149,7 +149,7 @@ async def index():
         
         <div id="action_row" class="action-row">
             <button id="martBtn" class="btn btn-mart" onclick="startFlow(false, true)">ПЕРЕКРЫТИЕ</button>
-            <button id="repeatBtn" class="btn btn-repeat" onclick="repeatSignal()">ПОВТОРИТЬ СДЕЛКУ</button>
+            <button id="repeatBtn" class="btn btn-repeat" onclick="repeatSignal()">ПОВТОРИТЬ</button>
         </div>
         
         <a href="https://pocketoption.com/register" target="_blank" style="text-decoration: none;"><button id="btn_pocket" class="btn btn-pocket">ОТКРЫТЬ POCKET OPTION</button></a>
@@ -227,7 +227,7 @@ async def index():
 
             document.getElementById('martBtn').style.display = 'none';
             document.getElementById('repeatBtn').style.display = 'none';
-            document.getElementById('res').innerText = isMart ? `ШАГ ${{martStep}}: ${{currentBet}}$` : "--";
+            document.getElementById('res').innerText = "--";
             document.getElementById('loader').style.display = 'block';
             await new Promise(r => setTimeout(r, 2000));
             document.getElementById('loader').style.display = 'none';
@@ -237,7 +237,7 @@ async def index():
             lastSignal = d;
             
             let signalText = (d.signal == "UP" ? "ВВЕРХ" : "ВНИЗ");
-            document.getElementById('res').innerText = isMart ? `${{signalText}} (СТАВКА: ${{currentBet}}$)` : signalText;
+            document.getElementById('res').innerText = signalText;
             document.getElementById('res').style.color = d.signal == "UP" ? "#00ff66" : "#ff3344";
             document.getElementById('accuracy').style.display = 'block';
             document.getElementById('accuracy').innerText = "ACCURACY: " + d.accuracy + "%";
@@ -270,6 +270,8 @@ async def index():
             document.getElementById('res').innerText = lastSignal.signal == "UP" ? "ВВЕРХ" : "ВНИЗ";
             document.getElementById('res').style.color = lastSignal.signal == "UP" ? "#00ff66" : "#ff3344";
             document.getElementById('timer').innerText = "ПОВТОР: ВХОД СЕЙЧАС!";
+            document.getElementById('martBtn').style.display = 'none';
+            document.getElementById('repeatBtn').style.display = 'none';
         }}
 
         changeLang();
